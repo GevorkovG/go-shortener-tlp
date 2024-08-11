@@ -1,44 +1,57 @@
 package main
 
 import (
+	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 )
 
-const form = `<html>
-    <head>
-    <title></title>
-    </head>
-    <body>
-        <form action="/" method="post">
-            <label>Логин <input type="text" name="login"></label>
-            <label>Пароль <input type="password" name="password"></label>
-            <input type="submit" value="Login">
-        </form>
-    </body>
-</html>`
+var urls map[string]string
 
-func Auth(login, password string) bool {
-	return login == `guest` && password == `demo`
-}
-
-func mainPage(w http.ResponseWriter, r *http.Request) {
+func shortenURL(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		login := r.FormValue("login")
-		password := r.FormValue("password")
-		if Auth(login, password) {
-			io.WriteString(w, "Добро пожаловать!")
-		} else {
-			http.Error(w, "Неверный логин или пароль", http.StatusUnauthorized)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("cannot read request body: %s", err), http.StatusBadRequest)
+			return
 		}
+		url := string(body)
+		id := generateID()
+		urls[id] = url
+		response := fmt.Sprintf("http://localhost:8080/%s", id)
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(response))
+
+	} else if r.Method == http.MethodGet {
+		id := r.URL.Path[1:]
+		url := urls[id]
+		w.Header().Set("Location", url)
+		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	} else {
-		io.WriteString(w, form)
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 }
 
+func generateID() string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	b := make([]rune, 8)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
+
 func main() {
-	err := http.ListenAndServe(`:8080`, http.HandlerFunc(mainPage))
+	urls = make(map[string]string)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", shortenURL)
+
+	err := http.ListenAndServe(`:8080`, mux)
 	if err != nil {
 		panic(err)
 	}
