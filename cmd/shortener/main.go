@@ -1,6 +1,8 @@
 package main
 
 import (
+	"Praktikum_golang/sprint1/first/cmd/server/go-shortener-tlp/config"
+	"flag"
 	"fmt"
 	"io"
 	"math/rand"
@@ -56,13 +58,16 @@ func GetOriginURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+
 	urls = make(map[string]string)
 
 	r := chi.NewRouter()
 	r.Post("/", GetShortURL)
 	r.Get("/{id}", GetOriginURL)
 
-	err := http.ListenAndServe(`:8080`, r)
+	flag.Parse()
+
+	err := http.ListenAndServe(config.AppConfig.Host, r)
 	if err != nil {
 		panic(err)
 	}
