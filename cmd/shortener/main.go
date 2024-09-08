@@ -1,9 +1,11 @@
 package main
 
 import (
+	"Praktikum_golang/sprint1/first/cmd/server/go-shortener-tlp/config"
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 
@@ -41,7 +43,7 @@ func GetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	id := generateID()
 	urls[id] = url
-	response := fmt.Sprintf("http://localhost:8080/%s", id)
+	response := fmt.Sprintf(config.AppConfig.ResultURL+"/%s", id)
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
@@ -68,8 +70,5 @@ func main() {
 
 	flag.Parse()
 
-	err := http.ListenAndServe(`:8080`, r)
-	if err != nil {
-		panic(err)
-	}
+	log.Fatal(http.ListenAndServe(config.AppConfig.Host, r))
 }
