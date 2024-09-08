@@ -5,36 +5,11 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 var urls map[string]string
-
-func shortenURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("cannot read request body: %s", err), http.StatusBadRequest)
-			return
-		}
-		url := string(body)
-		id := generateID()
-		urls[id] = url
-		response := fmt.Sprintf("http://localhost:8080/%s", id)
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(response))
-
-	} else if r.Method == http.MethodGet {
-		id := r.URL.Path[1:]
-		url := urls[id]
-		w.Header().Set("Location", url)
-		w.WriteHeader(http.StatusTemporaryRedirect)
-		return
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-}
 
 func generateID() string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -45,13 +20,49 @@ func generateID() string {
 	return string(b)
 }
 
+func GetShortURL(w http.ResponseWriter, r *http.Request) {
+	urls = make(map[string]string)
+	responseData, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("cannot read request body: %s", err), http.StatusBadRequest)
+		return
+	}
+	if string(responseData) == "" {
+		http.Error(w, "Empty POST request body!", http.StatusBadRequest)
+		return
+	}
+	url := string(responseData)
+	if url == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	id := generateID()
+	urls[id] = url
+	response := fmt.Sprintf("http://localhost:8080/%s", id)
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(response))
+}
+
+func GetOriginURL(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Path[1:]
+	url, ok := urls[id]
+	if !ok {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+	}
+	w.Header().Set("Location", url)
+	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
 func main() {
 	urls = make(map[string]string)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", shortenURL)
+	r := chi.NewRouter()
+	r.Get("/", GetShortURL)
+	r.Post("/{id}", GetOriginURL)
 
-	err := http.ListenAndServe(`:8080`, mux)
+	err := http.ListenAndServe(`:8080`, r)
 	if err != nil {
 		panic(err)
 	}

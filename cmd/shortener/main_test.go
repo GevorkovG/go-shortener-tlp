@@ -42,7 +42,7 @@ func Test_shortenURL(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "https://localhost:8080", strings.NewReader(test.url))
 			w := httptest.NewRecorder()
 
-			shortenURL(w, req)
+			GetShortURL(w, req)
 
 			url := w.Body.String()
 
@@ -56,7 +56,7 @@ func Test_shortenURL(t *testing.T) {
 
 			w2 := httptest.NewRecorder()
 
-			shortenURL(w2, req2)
+			GetOriginURL(w2, req2)
 
 			t.Log("w2.Location: " + w2.Header().Get("Location"))
 
