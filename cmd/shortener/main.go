@@ -59,8 +59,8 @@ func main() {
 	urls = make(map[string]string)
 
 	r := chi.NewRouter()
-	r.Get("/", GetShortURL)
-	r.Post("/{id}", GetOriginURL)
+	r.Post("/", GetShortURL)
+	r.Get("/{id}", GetOriginURL)
 
 	err := http.ListenAndServe(`:8080`, r)
 	if err != nil {
