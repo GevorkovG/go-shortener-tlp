@@ -18,7 +18,6 @@ func Test_shortenURL(t *testing.T) {
 	type want struct {
 		contentType string
 		statusCode  int
-		location    string
 	}
 
 	testURL := "https://yandex.ru"
@@ -29,7 +28,7 @@ func Test_shortenURL(t *testing.T) {
 		want want
 	}{
 		{
-			name: "test post #1",
+			name: "test 1 (yandex)",
 			url:  testURL,
 			want: want{
 				statusCode:  201,
@@ -51,7 +50,7 @@ func Test_shortenURL(t *testing.T) {
 
 			assert.Equal(t, test.want.statusCode, w.Code, "Код ответа не совпадает с ожидаемым")
 
-			t.Log("w.Body" + url)
+			t.Log("w.Body: " + url)
 
 			req2 := httptest.NewRequest(http.MethodGet, url, nil)
 
@@ -59,7 +58,7 @@ func Test_shortenURL(t *testing.T) {
 
 			shortenURL(w2, req2)
 
-			t.Log("w2.Location" + w2.Header().Get("Location"))
+			t.Log("w2.Location: " + w2.Header().Get("Location"))
 
 			assert.Equal(t, 307, w2.Code, "Код ответа (307) не совпадает c ожидаемым")
 			assert.Equal(t, testURL, w2.Header().Get("Location"), "Location не совпадает с ожидаемым")
@@ -67,35 +66,3 @@ func Test_shortenURL(t *testing.T) {
 		})
 	}
 }
-
-/*
-package main
-
-import "testing"
-
-func TestStatusHandler(t *testing.T) {
-	type want struct {
-		code        int
-		response    string
-		contentType string
-	}
-	tests := []struct {
-		name string
-		want want
-	}{
-		{
-			name: "positive test #1",
-			want: want{
-				code:        200,
-				response:    `{"status":"ok"}`,
-				contentType: "application/json",
-			},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			// здесь будет запрос и проверка ответа
-		})
-	}
-}
-*/
