@@ -47,7 +47,10 @@ func GetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(response))
+	_, err = io.WriteString(w, response)
+	if err != nil {
+		return
+	}
 }
 
 func GetOriginURL(w http.ResponseWriter, r *http.Request) {
