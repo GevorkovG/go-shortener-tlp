@@ -41,7 +41,8 @@ func GetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	id := generateID()
 	urls[id] = url
-	response := fmt.Sprintf("http://localhost:8080/%s", id)
+	response := fmt.Sprintf(config.AppConfig.ResultURL+"/%s", id)
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(response))

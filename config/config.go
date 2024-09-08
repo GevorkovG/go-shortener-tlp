@@ -20,7 +20,7 @@ func init() {
 	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
 		AppConfig.ResultURL = baseURL
 	} else {
-		flag.StringVar(&AppConfig.ResultURL, "b", "http://localhost:8080", "It's a Result URL")
+		flag.StringVar(&AppConfig.ResultURL, "b", "http://localhost:8000", "It's a Result URL")
 	}
 
 }
