@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Praktikum_golang/sprint1/first/cmd/server/go-shortener-tlp/internal/app"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,7 +13,6 @@ import (
 var testUrls map[string]string
 
 func Test_shortenURL(t *testing.T) {
-	urls = make(map[string]string)
 
 	testUrls = make(map[string]string)
 	type want struct {
@@ -42,7 +42,7 @@ func Test_shortenURL(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "https://localhost:8080", strings.NewReader(test.url))
 			w := httptest.NewRecorder()
 
-			GetShortURL(w, req)
+			app.GetShortURL(w, req)
 
 			url := w.Body.String()
 
@@ -56,7 +56,7 @@ func Test_shortenURL(t *testing.T) {
 
 			w2 := httptest.NewRecorder()
 
-			GetOriginURL(w2, req2)
+			app.GetOriginURL(w2, req2)
 
 			t.Log("w2.Location: " + w2.Header().Get("Location"))
 
