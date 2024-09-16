@@ -1,11 +1,12 @@
 package app
 
 import (
-	"Praktikum_golang/sprint1/first/cmd/server/go-shortener-tlp/config"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
+
+	"github.com/GevorkovG/go-shortener-tlp/config"
 )
 
 var urls map[string]string
@@ -26,12 +27,9 @@ func GetShortURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("cannot read request body: %s", err), http.StatusBadRequest)
 		return
 	}
-	if string(responseData) == "" {
-		http.Error(w, "Empty POST request body!", http.StatusBadRequest)
-		return
-	}
 	url := string(responseData)
 	if url == "" {
+		http.Error(w, "Empty POST request body!", http.StatusBadRequest)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
