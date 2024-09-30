@@ -3,13 +3,11 @@ package app
 import (
 	"errors"
 	"flag"
-	"log"
 	"net/http"
-	"time"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
+	"github.com/GevorkovG/go-shortener-tlp/internal/log"
 	"github.com/go-chi/chi"
-	"go.uber.org/zap"
 )
 
 type Storage struct {
@@ -35,20 +33,6 @@ func (s *Storage) GetURL(key string) (string, error) {
 	return "", errors.New("id not found")
 }
 
-type (
-	// берём структуру для хранения сведений об ответе
-	responseData struct {
-		status int
-		size   int
-	}
-
-	// добавляем реализацию http.ResponseWriter
-	loggingResponseWriter struct {
-		http.ResponseWriter // встраиваем оригинальный http.ResponseWriter
-		responseData        *responseData
-	}
-)
-
 type AppConfig struct {
 	Host      string
 	ResultURL string
@@ -67,47 +51,13 @@ func NewApp(cfg *AppConfig) *App {
 }
 
 func Run() {
-
 	conf := config.NewCfg()
+
 	r := chi.NewRouter()
-	r.Post("/", WithLogging(GetShortURL))
-	r.Get("/{id}", WithLogging(GetOriginURL))
+	r.Post("/", log.WithLogging(conf.GetShortURL))
+	r.Get("/{id}", log.WithLogging(conf.GetOriginURL))
 	flag.Parse()
 
 	log.Fatal(http.ListenAndServe(conf.Host, r))
 
-}
-
-func WithLogging(h http.HandlerFunc) http.HandlerFunc {
-	logFn := func(w http.ResponseWriter, r *http.Request) {
-
-		logger, err := zap.NewDevelopment()
-		if err != nil {
-			panic(err)
-		}
-		defer func() {
-			err = logger.Sync()
-		}()
-
-		sugar := *logger.Sugar()
-		start := time.Now()
-		responseData := &responseData{
-			status: 0,
-			size:   0,
-		}
-		lw := loggingResponseWriter{
-			ResponseWriter: w, // встраиваем оригинальный http.ResponseWriter
-			responseData:   responseData,
-		}
-		h.ServeHTTP(&lw, r) // внедряем реализацию http.ResponseWriter
-		duration := time.Since(start)
-		sugar.Infoln(
-			"uri", r.RequestURI,
-			"method", r.Method,
-			"status", responseData.status, // получаем перехваченный код статуса ответа
-			"duration", duration,
-			"size", responseData.size, // получаем перехваченный размер ответа
-		)
-	}
-	return logFn
 }
