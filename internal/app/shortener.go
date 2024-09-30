@@ -1,6 +1,8 @@
 package app
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
@@ -16,6 +18,53 @@ func generateID() string {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
+}
+
+type Request1 struct {
+	URL string `json:"url"`
+}
+
+type Response1 struct {
+	Result string `json:"result"`
+}
+
+func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
+
+	var req Request1
+	var buf bytes.Buffer
+
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// десериализуем JSON
+	if err = json.Unmarshal(buf.Bytes(), &req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id := generateID()
+
+	a.storage.SetURL(id, req.URL)
+
+	result := Response1{
+		Result: a.cfg.ResultURL + "/" + id,
+	}
+
+	response, err := json.Marshal(result)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	_, err = w.Write(response)
+	if err != nil {
+		return
+	}
+
 }
 
 func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
