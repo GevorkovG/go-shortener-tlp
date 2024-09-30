@@ -30,7 +30,6 @@ func GetShortURL(w http.ResponseWriter, r *http.Request) {
 	url := string(responseData)
 	if url == "" {
 		http.Error(w, "Empty POST request body!", http.StatusBadRequest)
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
