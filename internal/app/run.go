@@ -36,6 +36,20 @@ func (s *Storage) GetURL(key string) (string, error) {
 	return "", errors.New("id not found")
 }
 
+type (
+	// берём структуру для хранения сведений об ответе
+	responseData struct {
+		status int
+		size   int
+	}
+
+	// добавляем реализацию http.ResponseWriter
+	loggingResponseWriter struct {
+		http.ResponseWriter // встраиваем оригинальный http.ResponseWriter
+		responseData        *responseData
+	}
+)
+
 type AppConfig struct {
 	Host      string
 	ResultURL string
@@ -65,7 +79,7 @@ func Run() {
 
 	r := chi.NewRouter()
 	r.Post("/", WithLogging(GetShortURL))
-	r.Get("/{id}", GetOriginURL)
+	r.Get("/{id}", WithLogging(GetOriginURL))
 
 	flag.Parse()
 
@@ -81,15 +95,27 @@ func Run() {
 
 func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
+
 		start := time.Now()
-		uri := r.RequestURI
-		method := r.Method
-		h.ServeHTTP(w, r)
+
+		responseData := &responseData{
+			status: 0,
+			size:   0,
+		}
+		lw := loggingResponseWriter{
+			ResponseWriter: w, // встраиваем оригинальный http.ResponseWriter
+			responseData:   responseData,
+		}
+		h.ServeHTTP(&lw, r) // внедряем реализацию http.ResponseWriter
+
 		duration := time.Since(start)
+
 		sugar.Infoln(
-			"uri", uri,
-			"method", method,
+			"uri", r.RequestURI,
+			"method", r.Method,
+			"status", responseData.status, // получаем перехваченный код статуса ответа
 			"duration", duration,
+			"size", responseData.size, // получаем перехваченный размер ответа
 		)
 	}
 	return logFn
