@@ -3,22 +3,26 @@ package config
 import (
 	"flag"
 	"os"
+	"strings"
 )
 
-var AppConfig struct {
+type AppConfig struct {
 	Host      string
 	ResultURL string
 }
 
-func init() {
+func NewCfg() *AppConfig {
 
-	flag.StringVar(&AppConfig.Host, "a", "localhost:8080", "It's a Host")
-	flag.StringVar(&AppConfig.ResultURL, "b", "http://localhost:8080", "It's a Result URL")
+	a := &AppConfig{}
+
+	flag.StringVar(&a.Host, "a", "localhost:8080", "It's a Host")
+	flag.StringVar(&a.ResultURL, "b", "http://localhost:8080", "It's a Result URL")
 
 	if host := os.Getenv("SERVER_ADDRESS"); host != "" {
-		AppConfig.Host = host
+		a.Host = strings.TrimSpace(host)
 	}
 	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
-		AppConfig.ResultURL = baseURL
+		a.ResultURL = strings.TrimSpace(baseURL)
 	}
+	return a
 }
