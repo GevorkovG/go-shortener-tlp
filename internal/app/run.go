@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"flag"
+	"log"
 	"net/http"
 	"time"
 
@@ -10,8 +11,6 @@ import (
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
 )
-
-var sugar zap.SugaredLogger
 
 type Storage struct {
 	urls map[string]string
@@ -69,35 +68,29 @@ func NewApp(cfg *AppConfig) *App {
 
 func Run() {
 
-	logger, err := zap.NewProduction()
-	if err != nil {
-		panic(err)
-	}
-	defer logger.Sync() // flushes buffer, if any
-
-	sugar := *logger.Sugar()
-
+	conf := config.NewCfg()
 	r := chi.NewRouter()
 	r.Post("/", WithLogging(GetShortURL))
 	r.Get("/{id}", WithLogging(GetOriginURL))
-
 	flag.Parse()
 
-	sugar.Infow(
-		"Starting server",
-		"addr", config.AppConfig.Host,
-	)
+	log.Fatal(http.ListenAndServe(conf.Host, r))
 
-	if err := http.ListenAndServe(config.AppConfig.Host, r); err != nil {
-		sugar.Fatalw(err.Error(), "event", "start server")
-	}
 }
 
 func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 
-		start := time.Now()
+		logger, err := zap.NewDevelopment()
+		if err != nil {
+			panic(err)
+		}
+		defer func() {
+			err = logger.Sync()
+		}()
 
+		sugar := *logger.Sugar()
+		start := time.Now()
 		responseData := &responseData{
 			status: 0,
 			size:   0,
@@ -107,9 +100,7 @@ func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 			responseData:   responseData,
 		}
 		h.ServeHTTP(&lw, r) // внедряем реализацию http.ResponseWriter
-
 		duration := time.Since(start)
-
 		sugar.Infoln(
 			"uri", r.RequestURI,
 			"method", r.Method,

@@ -5,8 +5,6 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-
-	"github.com/GevorkovG/go-shortener-tlp/config"
 )
 
 var urls map[string]string
@@ -20,7 +18,7 @@ func generateID() string {
 	return string(b)
 }
 
-func GetShortURL(w http.ResponseWriter, r *http.Request) {
+func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	urls = make(map[string]string)
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -35,7 +33,7 @@ func GetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	id := generateID()
 	urls[id] = url
-	response := fmt.Sprintf(config.AppConfig.ResultURL+"/%s", id)
+	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", id)
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
@@ -45,7 +43,7 @@ func GetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetOriginURL(w http.ResponseWriter, r *http.Request) {
+func (a *App) GetOriginURL(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[1:]
 	url, ok := urls[id]
 	if !ok {
