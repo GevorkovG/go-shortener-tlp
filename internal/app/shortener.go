@@ -5,9 +5,9 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-)
 
-var urls map[string]string
+	"github.com/go-chi/chi"
+)
 
 func generateID() string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -19,7 +19,7 @@ func generateID() string {
 }
 
 func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
-	urls = make(map[string]string)
+	//urls = make(map[string]string)
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read request body: %s", err), http.StatusBadRequest)
@@ -32,11 +32,12 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := generateID()
-	urls[id] = url
+	a.storage.SetURL(id, url)
 	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", id)
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
+
 	_, err = io.WriteString(w, response)
 	if err != nil {
 		return
@@ -44,9 +45,9 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) GetOriginURL(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[1:]
-	url, ok := urls[id]
-	if !ok {
+	id := chi.URLParam(r, "id")
+	url, err := a.storage.GetURL(id)
+	if err != nil {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 	}
 	w.Header().Set("Location", url)
