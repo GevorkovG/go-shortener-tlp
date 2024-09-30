@@ -6,19 +6,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/GevorkovG/go-shortener-tlp/config"
 	"github.com/stretchr/testify/assert"
 )
 
 var testUrls map[string]string
 
-func Test_shortenURL(t *testing.T) {
+func Test_GetShortURL(t *testing.T) {
 
 	testUrls = make(map[string]string)
 	type want struct {
 		contentType string
 		statusCode  int
 	}
-
 	testURL := "https://yandex.ru"
 
 	tests := []struct {
@@ -35,13 +35,14 @@ func Test_shortenURL(t *testing.T) {
 			},
 		},
 	}
-
+	conf := config.NewCfg()
+	app := NewApp(conf)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "https://localhost:8080", strings.NewReader(test.url))
 			w := httptest.NewRecorder()
 
-			GetShortURL(w, req)
+			app.GetShortURL(w, req)
 
 			url := w.Body.String()
 
@@ -55,7 +56,7 @@ func Test_shortenURL(t *testing.T) {
 
 			w2 := httptest.NewRecorder()
 
-			GetOriginURL(w2, req2)
+			app.GetOriginURL(w2, req2)
 
 			t.Log("w2.Location: " + w2.Header().Get("Location"))
 
