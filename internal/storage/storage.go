@@ -1,6 +1,8 @@
 package storage
 
-import "errors"
+import (
+	"errors"
+)
 
 type Storage struct {
 	urls map[string]string

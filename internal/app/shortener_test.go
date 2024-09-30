@@ -1,68 +1,107 @@
 package app
 
 import (
+	"context"
+	"flag"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
+	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 )
 
-var testUrls map[string]string
+func Test_GetOriginalURL(t *testing.T) {
+
+	//очищаем флаги командной строки
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	conf := config.NewCfg()
+	app := NewApp(conf)
+
+	resultURL := "https://yandex.ru"
+
+	type want struct {
+		code     int
+		location string
+	}
+
+	type testInf struct {
+		method string
+		url    string
+		testID string
+		want   want
+	}
+
+	test := testInf{
+		method: http.MethodGet,
+		url:    "http://localhost:8080/vRFgdzs",
+		testID: "vRFgdzs",
+		want: want{
+			code:     307,
+			location: resultURL,
+		},
+	}
+
+	app.storage.SetURL(test.testID, resultURL)
+
+	r := httptest.NewRequest(test.method, test.url, nil)
+
+	w := httptest.NewRecorder()
+
+	router := chi.NewRouteContext()
+
+	router.URLParams.Add("id", test.testID)
+
+	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, router))
+
+	app.GetOriginURL(w, r)
+
+	assert.Equal(t, test.want.code, w.Code, "Код ответа (307) не совпадает с ожидаемым")
+	assert.Equal(t, test.want.location, w.Header().Get("Location"), "Location не совпадает с ожидаемым")
+
+}
 
 func Test_GetShortURL(t *testing.T) {
 
-	testUrls = make(map[string]string)
+	//очищаем флаги командной строки
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
 	type want struct {
+		code        int
 		contentType string
-		statusCode  int
+		location    string
 	}
 	testURL := "https://yandex.ru"
 
-	tests := []struct {
-		name string
-		url  string
-		want want
-	}{
-		{
-			name: "test 1 (yandex)",
-			url:  testURL,
-			want: want{
-				statusCode:  201,
-				contentType: "text/plain",
-			},
+	type testInf struct {
+		method string
+		url    string
+		want   want
+	}
+
+	test := testInf{
+		method: http.MethodPost,
+		url:    testURL,
+		want: want{
+			code:        201,
+			contentType: "text/plain",
 		},
 	}
+
 	conf := config.NewCfg()
 	app := NewApp(conf)
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "https://localhost:8080", strings.NewReader(test.url))
-			w := httptest.NewRecorder()
 
-			app.GetShortURL(w, req)
+	r := httptest.NewRequest(test.method, "https://localhost:8080", strings.NewReader(test.url))
 
-			url := w.Body.String()
+	w := httptest.NewRecorder()
 
-			testUrls[testURL] = url
+	app.GetShortURL(w, r)
 
-			assert.Equal(t, test.want.statusCode, w.Code, "Код ответа не совпадает с ожидаемым")
+	assert.Equal(t, test.want.code, w.Code, "Код ответа не совпадает с ожидаемым")
+	assert.Equal(t, test.want.contentType, w.Header().Get("Content-Type"), "Тип контента не совпадает с ожидаемым")
 
-			t.Log("w.Body: " + url)
-
-			req2 := httptest.NewRequest(http.MethodGet, url, nil)
-
-			w2 := httptest.NewRecorder()
-
-			app.GetOriginURL(w2, req2)
-
-			t.Log("w2.Location: " + w2.Header().Get("Location"))
-
-			assert.Equal(t, 307, w2.Code, "Код ответа (307) не совпадает c ожидаемым")
-			assert.Equal(t, testURL, w2.Header().Get("Location"), "Location не совпадает с ожидаемым")
-
-		})
-	}
 }

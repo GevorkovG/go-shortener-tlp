@@ -17,7 +17,6 @@ type App struct {
 }
 
 func NewApp(cfg *config.AppConfig) *App {
-
 	return &App{
 		cfg:     cfg,
 		storage: storage.NewStorage(),
@@ -25,12 +24,11 @@ func NewApp(cfg *config.AppConfig) *App {
 }
 
 func Run() {
-	var cfg *config.AppConfig
 	conf := config.NewCfg()
-	newApp := NewApp(cfg)
+	newApp := NewApp(conf)
 	r := chi.NewRouter()
-	r.Post("/", logg.WithLogging(newApp.GetShortURL))
 	r.Get("/{id}", logg.WithLogging(newApp.GetOriginURL))
+	r.Post("/", logg.WithLogging(newApp.GetShortURL))
 	flag.Parse()
 	log.Fatal(http.ListenAndServe(conf.Host, r))
 

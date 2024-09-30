@@ -33,6 +33,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	id := generateID()
 	a.storage.SetURL(id, url)
+
 	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", id)
 
 	w.Header().Set("Content-Type", "text/plain")
