@@ -27,8 +27,10 @@ func Run() {
 	conf := config.NewCfg()
 	newApp := NewApp(conf)
 	r := chi.NewRouter()
+	r.Post("/api/shorten/", logg.WithLogging(newApp.JSONGetShortURL))
 	r.Get("/{id}", logg.WithLogging(newApp.GetOriginURL))
 	r.Post("/", logg.WithLogging(newApp.GetShortURL))
+
 	flag.Parse()
 	log.Fatal(http.ListenAndServe(conf.Host, r))
 

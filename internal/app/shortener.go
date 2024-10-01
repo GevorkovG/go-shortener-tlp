@@ -45,13 +45,14 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := generateID()
-
+	fmt.Println(id)
 	a.storage.SetURL(id, req.URL)
 
+	fmt.Println(req.URL)
 	result := Response1{
 		Result: a.cfg.ResultURL + "/" + id,
 	}
-
+	fmt.Println(result)
 	response, err := json.Marshal(result)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
