@@ -6,16 +6,32 @@ import (
 	"net/http"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
-
+	logg "github.com/GevorkovG/go-shortener-tlp/internal/log"
+	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 	"github.com/go-chi/chi"
 )
 
+type App struct {
+	cfg     *config.AppConfig
+	storage *storage.Storage
+}
+
+func NewApp(cfg *config.AppConfig) *App {
+	return &App{
+		cfg:     cfg,
+		storage: storage.NewStorage(),
+	}
+}
+
 func Run() {
+	conf := config.NewCfg()
+	newApp := NewApp(conf)
 	r := chi.NewRouter()
-	r.Post("/", GetShortURL)
-	r.Get("/{id}", GetOriginURL)
+	r.Post("/api/shorten", logg.WithLogging(newApp.JSONGetShortURL))
+	r.Get("/{id}", logg.WithLogging(newApp.GetOriginURL))
+	r.Post("/", logg.WithLogging(newApp.GetShortURL))
 
 	flag.Parse()
+	log.Fatal(http.ListenAndServe(conf.Host, r))
 
-	log.Fatal(http.ListenAndServe(config.AppConfig.Host, r))
 }
