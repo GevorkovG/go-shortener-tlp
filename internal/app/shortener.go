@@ -1,15 +1,16 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 
-	"github.com/GevorkovG/go-shortener-tlp/config"
+	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
+	"github.com/go-chi/chi"
 )
-
-var urls map[string]string
 
 func generateID() string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -20,8 +21,60 @@ func generateID() string {
 	return string(b)
 }
 
-func GetShortURL(w http.ResponseWriter, r *http.Request) {
-	urls = make(map[string]string)
+type Request1 struct {
+	URL string `json:"url"`
+}
+
+type Response1 struct {
+	Result string `json:"result"`
+}
+
+func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
+
+	var req Request1
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id := generateID()
+
+	a.Storage.SetURL(id, req.URL)
+	fileStorage := storage.NewFileStorage()
+
+	fileStorage.Short = id
+	fileStorage.Original = req.URL
+
+	err = storage.SaveToFile(fileStorage, a.cfg.FilePATH)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	result := Response1{
+		Result: a.cfg.ResultURL + "/" + id,
+	}
+
+	response, err := json.Marshal(result)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	_, err = w.Write(response)
+	if err != nil {
+		return
+	}
+
+}
+
+func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
+
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read request body: %s", err), http.StatusBadRequest)
@@ -30,26 +83,42 @@ func GetShortURL(w http.ResponseWriter, r *http.Request) {
 	url := string(responseData)
 	if url == "" {
 		http.Error(w, "Empty POST request body!", http.StatusBadRequest)
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	id := generateID()
-	urls[id] = url
-	response := fmt.Sprintf(config.AppConfig.ResultURL+"/%s", id)
+	a.Storage.SetURL(id, url)
 
+	fileStorage := storage.NewFileStorage()
+
+	fileStorage.Short = id
+	fileStorage.Original = url
+
+	err = storage.SaveToFile(fileStorage, a.cfg.FilePATH)
+
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", id)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
+
 	_, err = io.WriteString(w, response)
 	if err != nil {
 		return
 	}
 }
 
-func GetOriginURL(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[1:]
-	url, ok := urls[id]
-	if !ok {
+func (a *App) GetOriginURL(w http.ResponseWriter, r *http.Request) {
+
+	id := chi.URLParam(r, "id")
+
+	url, err := a.Storage.GetURL(id)
+
+	if err != nil {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 	}
 	w.Header().Set("Location", url)
