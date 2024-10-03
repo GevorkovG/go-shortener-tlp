@@ -131,6 +131,16 @@ func gzipMiddleware(h http.Handler) http.Handler {
 func Run() {
 	conf := config.NewCfg()
 	newApp := NewApp(conf)
+
+	data, err := storage.LoadFromFile(conf.FilePATH)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	newApp.Storage.Load(data)
+
+	//router
 	r := chi.NewRouter()
 
 	r.Use(logg.WithLogging)
@@ -139,6 +149,7 @@ func Run() {
 	r.Post("/api/shorten", newApp.JSONGetShortURL)
 	r.Get("/{id}", newApp.GetOriginURL)
 	r.Post("/", newApp.GetShortURL)
+	//end router
 
 	flag.Parse()
 	log.Fatal(http.ListenAndServe(conf.Host, r))
