@@ -18,6 +18,22 @@ func NewStorage() *Storage {
 	}
 }
 
+func NewFileStorage() *FileStorage {
+	return &FileStorage{}
+}
+
+func SaveToFile(fs *FileStorage, fileName string) error {
+
+	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(fs)
+	return err
+}
+
 // -----------------------------------------
 type InMemoryStorage struct {
 	urls map[string]string
@@ -33,11 +49,11 @@ func (s *InMemoryStorage) Load(data map[string]string) {
 	s.urls = data
 }
 
-func (s *Storage) SetURL(key, value string) {
+func (s *InMemoryStorage) SetURL(key, value string) {
 	s.urls[key] = value
 }
 
-func (s *Storage) GetURL(key string) (string, error) {
+func (s *InMemoryStorage) GetURL(key string) (string, error) {
 
 	url, ok := s.urls[key]
 	if ok {

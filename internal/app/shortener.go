@@ -1,13 +1,14 @@
 package app
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 
+	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 	"github.com/go-chi/chi"
 )
 
@@ -31,28 +32,32 @@ type Response1 struct {
 func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	var req Request1
-	var buf bytes.Buffer
 
-	_, err := buf.ReadFrom(r.Body)
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	// десериализуем JSON
-	if err = json.Unmarshal(buf.Bytes(), &req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	id := generateID()
-	fmt.Println(id)
-	a.Storage.SetURL(id, req.URL)
 
-	fmt.Println(req.URL)
+	a.Storage.SetURL(id, req.URL)
+	fileStorage := storage.NewFileStorage()
+
+	fileStorage.Short = id
+	fileStorage.Original = req.URL
+
+	err = storage.SaveToFile(fileStorage, a.cfg.FilePATH)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	result := Response1{
 		Result: a.cfg.ResultURL + "/" + id,
 	}
-	fmt.Println(result)
+
 	response, err := json.Marshal(result)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -69,7 +74,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
-	//urls = make(map[string]string)
+
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read request body: %s", err), http.StatusBadRequest)
@@ -84,8 +89,20 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	id := generateID()
 	a.Storage.SetURL(id, url)
 
-	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", id)
+	fileStorage := storage.NewFileStorage()
 
+	fileStorage.Short = id
+	fileStorage.Original = url
+
+	err = storage.SaveToFile(fileStorage, a.cfg.FilePATH)
+
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", id)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 
@@ -96,8 +113,11 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) GetOriginURL(w http.ResponseWriter, r *http.Request) {
+
 	id := chi.URLParam(r, "id")
+
 	url, err := a.Storage.GetURL(id)
+
 	if err != nil {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 	}
