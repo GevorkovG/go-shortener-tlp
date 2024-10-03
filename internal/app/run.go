@@ -22,7 +22,7 @@ type App struct {
 func NewApp(cfg *config.AppConfig) *App {
 	return &App{
 		cfg:     cfg,
-		storage: storage.NewStorage(),
+		Storage: storage.NewInMemoryStorage(),
 	}
 }
 
@@ -138,7 +138,7 @@ func Run() {
 		log.Fatal(err)
 	}
 
-	newApp.Storage.Load(data)
+	newApp.storage.Load(data)
 
 	//router
 	r := chi.NewRouter()

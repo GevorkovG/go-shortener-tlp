@@ -23,6 +23,12 @@ type InMemoryStorage struct {
 	urls map[string]string
 }
 
+func NewInMemoryStorage() *InMemoryStorage {
+	return &InMemoryStorage{
+		urls: make(map[string]string),
+	}
+}
+
 func (s *InMemoryStorage) Load(data map[string]string) {
 	s.urls = data
 }
