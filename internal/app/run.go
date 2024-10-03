@@ -16,7 +16,7 @@ import (
 
 type App struct {
 	cfg     *config.AppConfig
-	storage *storage.Storage
+	Storage *storage.InMemoryStorage
 }
 
 func NewApp(cfg *config.AppConfig) *App {
@@ -138,7 +138,7 @@ func Run() {
 		log.Fatal(err)
 	}
 
-	newApp.storage.Load(data)
+	newApp.Storage.Load(data)
 
 	//router
 	r := chi.NewRouter()

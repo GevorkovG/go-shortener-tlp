@@ -46,7 +46,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	id := generateID()
 	fmt.Println(id)
-	a.storage.SetURL(id, req.URL)
+	a.Storage.SetURL(id, req.URL)
 
 	fmt.Println(req.URL)
 	result := Response1{
@@ -82,7 +82,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := generateID()
-	a.storage.SetURL(id, url)
+	a.Storage.SetURL(id, url)
 
 	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", id)
 
@@ -97,7 +97,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) GetOriginURL(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	url, err := a.storage.GetURL(id)
+	url, err := a.Storage.GetURL(id)
 	if err != nil {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 	}

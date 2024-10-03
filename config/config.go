@@ -9,7 +9,7 @@ import (
 type AppConfig struct {
 	Host      string
 	ResultURL string
-	FilePATH  string `env:"FILE_STORAGE_PATH"`
+	FilePATH  string
 }
 
 func NewCfg() *AppConfig {
@@ -26,5 +26,18 @@ func NewCfg() *AppConfig {
 	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
 		a.ResultURL = strings.TrimSpace(baseURL)
 	}
+	if baseURL := os.Getenv("FILE_STORAGE_PATH"); baseURL != "" {
+		a.FilePATH = strings.TrimSpace(baseURL)
+	}
+	if baseURL := os.Getenv("BASE_URL"); baseURL != "" {
+		a.ResultURL = strings.TrimSpace(baseURL)
+	}
+	if host := os.Getenv("SERVER_ADDRESS"); host != "" {
+		a.Host = strings.TrimSpace(host)
+	}
+	if file := os.Getenv("FILE_STORAGE_PATH"); file != "" {
+		a.FilePATH = file
+	}
+
 	return a
 }
