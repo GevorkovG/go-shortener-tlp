@@ -9,15 +9,17 @@ import (
 	"strings"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
-	_ "github.com/GevorkovG/go-shortener-tlp/internal/database"
+	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	logg "github.com/GevorkovG/go-shortener-tlp/internal/log"
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 	"github.com/go-chi/chi"
 )
 
 type App struct {
-	cfg     *config.AppConfig
-	Storage *storage.InMemoryStorage
+	cfg      *config.AppConfig
+	Storage  *storage.InMemoryStorage
+	DataBase *database.DBStore
+	DBReady  bool
 }
 
 func NewApp(cfg *config.AppConfig) *App {
