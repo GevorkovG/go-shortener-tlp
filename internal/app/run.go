@@ -39,6 +39,21 @@ func (a *App) ConfigureDB() error {
 	return nil
 }
 
+func (a *App) Ping(w http.ResponseWriter, _ *http.Request) {
+
+	if a.DBReady {
+		if err := a.DataBase.DB.Ping(); err != nil {
+			log.Println("didn't ping Database")
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	log.Println("didn't ping Database")
+	w.WriteHeader(http.StatusInternalServerError)
+}
+
 // compressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
 // сжимать передаваемые данные и выставлять правильные HTTP-заголовки
 type compressWriter struct {
