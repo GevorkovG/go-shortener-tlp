@@ -74,7 +74,7 @@ func Test_JSONGetShortURL(t *testing.T) {
 		want struct {
 			code        int
 			contentType string
-			location    string
+			//location    string
 		}
 
 		testInf struct {
@@ -113,7 +113,7 @@ func Test_GetShortURL(t *testing.T) {
 	type want struct {
 		code        int
 		contentType string
-		location    string
+		//location    string
 	}
 	testURL := "https://yandex.ru"
 

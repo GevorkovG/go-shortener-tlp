@@ -29,6 +29,16 @@ func NewApp(cfg *config.AppConfig) *App {
 	}
 }
 
+func (a *App) ConfigureDB() error {
+	db := database.NewDB(a.cfg.DataBaseString)
+	if err := db.Open(); err != nil {
+		return err
+	}
+	a.DataBase = db
+	a.DBReady = true
+	return nil
+}
+
 // compressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
 // сжимать передаваемые данные и выставлять правильные HTTP-заголовки
 type compressWriter struct {
