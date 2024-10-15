@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
+	_ "github.com/GevorkovG/go-shortener-tlp/internal/database"
 	logg "github.com/GevorkovG/go-shortener-tlp/internal/log"
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 	"github.com/go-chi/chi"
@@ -131,6 +132,10 @@ func gzipMiddleware(h http.Handler) http.Handler {
 func Run() {
 	conf := config.NewCfg()
 	newApp := NewApp(conf)
+
+	if err := newApp.ConfigureDB(); err != nil {
+		log.Println("Can't configure Database!")
+	}
 
 	data, err := storage.LoadFromFile(conf.FilePATH)
 
