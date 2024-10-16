@@ -14,18 +14,6 @@ import (
 	"github.com/go-chi/chi"
 )
 
-type App struct {
-	cfg     *config.AppConfig
-	Storage *storage.InMemoryStorage
-}
-
-func NewApp(cfg *config.AppConfig) *App {
-	return &App{
-		cfg:     cfg,
-		Storage: storage.NewInMemoryStorage(),
-	}
-}
-
 // compressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
 // сжимать передаваемые данные и выставлять правильные HTTP-заголовки
 type compressWriter struct {
@@ -131,6 +119,10 @@ func gzipMiddleware(h http.Handler) http.Handler {
 func Run() {
 	conf := config.NewCfg()
 	newApp := NewApp(conf)
+	flag.Parse()
+	if err := newApp.ConfigureDB(); err != nil {
+		log.Printf("Can't configure Database! %s %s", err, newApp.cfg.DataBaseString)
+	}
 
 	data, err := storage.LoadFromFile(conf.FilePATH)
 
@@ -148,10 +140,10 @@ func Run() {
 
 	r.Post("/api/shorten", newApp.JSONGetShortURL)
 	r.Get("/{id}", newApp.GetOriginURL)
+	r.Get("/ping", newApp.Ping)
 	r.Post("/", newApp.GetShortURL)
 	//end router
 
-	flag.Parse()
 	log.Fatal(http.ListenAndServe(conf.Host, r))
 
 }
