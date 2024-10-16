@@ -36,18 +36,11 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 
 // WithLogging добавляет дополнительный код для регистрации сведений о запросе
 // и возвращает новый http.Handler.
-
 func WithLogging(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger, err := zap.NewDevelopment()
-		if err != nil {
-			// вызываем панику, если ошибка
-			panic(err)
-		}
+		logger, _ := zap.NewDevelopment()
 
-		defer func() {
-			err = logger.Sync()
-		}()
+		defer logger.Sync()
 
 		// делаем регистратор SugaredLogger
 		sugar := *logger.Sugar()
@@ -64,13 +57,11 @@ func WithLogging(h http.Handler) http.Handler {
 		}
 		h.ServeHTTP(&lw, r) // внедряем реализацию http.ResponseWriter
 
-		duration := time.Since(start)
-
 		sugar.Infoln(
 			"uri", r.RequestURI,
 			"method", r.Method,
 			"status", responseData.status, // получаем перехваченный код статуса ответа
-			"duration", duration,
+			"duration", time.Since(start),
 			"size", responseData.size, // получаем перехваченный размер ответа
 			"loc", w.Header().Get("Location"),
 		)

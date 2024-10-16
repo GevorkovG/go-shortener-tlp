@@ -8,9 +8,38 @@ import (
 	"math/rand"
 	"net/http"
 
+	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
+
 	"github.com/go-chi/chi"
 )
+
+type Link struct {
+	ID       int
+	Short    string
+	Original string
+	Store    *database.DBStore
+}
+
+func (l *Link) CreateTable() error {
+	if _, err := l.Store.DB.Exec("CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY , short CHAR (20), original CHAR (255));"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Link) Insert(link *Link) (*Link, error) {
+	if err := l.CreateTable(); err != nil {
+		return nil, err
+	}
+	if err := l.Store.DB.QueryRow(
+		"INSERT INTO links (short, original) VALUES ($1,$2) RETURNING id",
+		link.Short, link.Original,
+	).Scan(&link.ID); err != nil {
+		return nil, err
+	}
+	return link, nil
+}
 
 func generateID() string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -87,6 +116,36 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := generateID()
+
+	linkModel := Link{
+		Short:    id,
+		Original: url,
+		Store:    a.DataBase,
+	}
+
+	if a.DBReady {
+		_, err = linkModel.Insert(&linkModel)
+		if err != nil {
+			log.Println("Don't insert url!")
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else if a.cfg.FilePATH != "" {
+		fileStorage := storage.NewFileStorage()
+
+		fileStorage.Short = id
+		fileStorage.Original = url
+
+		err = storage.SaveToFile(fileStorage, a.cfg.FilePATH)
+
+		if err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	a.Storage.SetURL(id, url)
 
 	fileStorage := storage.NewFileStorage()
