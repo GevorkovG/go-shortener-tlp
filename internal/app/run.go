@@ -9,50 +9,10 @@ import (
 	"strings"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
-	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	logg "github.com/GevorkovG/go-shortener-tlp/internal/log"
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 	"github.com/go-chi/chi"
 )
-
-type App struct {
-	cfg      *config.AppConfig
-	Storage  *storage.InMemoryStorage
-	DataBase *database.DBStore
-	DBReady  bool
-}
-
-func NewApp(cfg *config.AppConfig) *App {
-	return &App{
-		cfg:     cfg,
-		Storage: storage.NewInMemoryStorage(),
-	}
-}
-
-func (a *App) ConfigureDB() error {
-	db := database.NewDB(a.cfg.DataBaseString)
-	if err := db.Open(); err != nil {
-		return err
-	}
-	a.DataBase = db
-	a.DBReady = true
-	return nil
-}
-
-func (a *App) Ping(w http.ResponseWriter, _ *http.Request) {
-
-	if a.DBReady {
-		if err := a.DataBase.DB.Ping(); err != nil {
-			log.Println("didn't ping Database")
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-	log.Println("didn't ping Database")
-	w.WriteHeader(http.StatusInternalServerError)
-}
 
 // compressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
 // сжимать передаваемые данные и выставлять правильные HTTP-заголовки
@@ -159,7 +119,7 @@ func gzipMiddleware(h http.Handler) http.Handler {
 func Run() {
 	conf := config.NewCfg()
 	newApp := NewApp(conf)
-
+	flag.Parse()
 	if err := newApp.ConfigureDB(); err != nil {
 		log.Printf("Can't configure Database! %s %s", err, newApp.cfg.DataBaseString)
 	}
@@ -184,7 +144,6 @@ func Run() {
 	r.Post("/", newApp.GetShortURL)
 	//end router
 
-	flag.Parse()
 	log.Fatal(http.ListenAndServe(conf.Host, r))
 
 }

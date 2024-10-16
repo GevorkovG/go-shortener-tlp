@@ -10,8 +10,8 @@ import (
 const (
 	DBhost     = "localhost"
 	DBuser     = "postgres"
-	DBpassword = "!"
-	DBdbname   = "short"
+	DBpassword = "6u8t3d804!"
+	DBdbname   = "videos"
 )
 
 type AppConfig struct {

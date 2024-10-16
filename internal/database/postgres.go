@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 
-	_ "github.com/jackc/pgx"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type DBStore struct {
