@@ -120,19 +120,21 @@ func Run() {
 	conf := config.NewCfg()
 	newApp := NewApp(conf)
 	flag.Parse()
+
+	//Подключение Postgres при наличии флага
 	if err := newApp.ConfigureDB(); err != nil {
 		log.Printf("Can't configure Database! %s %s", err, newApp.cfg.DataBaseString)
 	}
 
-	data, err := storage.LoadFromFile(conf.FilePATH)
-
-	if err != nil {
-		log.Fatal(err)
+	//Подключение файла при наличии флага
+	if conf.FilePATH != "" {
+		data, err := storage.LoadFromFile(conf.FilePATH)
+		if err != nil {
+			log.Fatal(err)
+		}
+		newApp.Storage.Load(data)
 	}
 
-	newApp.Storage.Load(data)
-
-	//router
 	r := chi.NewRouter()
 
 	r.Use(logg.WithLogging)
@@ -142,7 +144,6 @@ func Run() {
 	r.Get("/{id}", newApp.GetOriginURL)
 	r.Get("/ping", newApp.Ping)
 	r.Post("/", newApp.GetShortURL)
-	//end router
 
 	log.Fatal(http.ListenAndServe(conf.Host, r))
 

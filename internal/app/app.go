@@ -1,6 +1,8 @@
 package app
 
 import (
+	"log"
+
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
@@ -21,11 +23,15 @@ func NewApp(cfg *config.AppConfig) *App {
 }
 
 func (a *App) ConfigureDB() error {
-	db := database.NewDB(a.cfg.DataBaseString)
-	if err := db.Open(); err != nil {
-		return err
+	if a.cfg.DataBaseString != "" {
+		db := database.NewDB(a.cfg.DataBaseString)
+		if err := db.Open(); err != nil {
+			return err
+		}
+		a.DataBase = db
+		a.DBReady = true
+		return nil
 	}
-	a.DataBase = db
-	a.DBReady = true
+	log.Println("dataBaseString is empty")
 	return nil
 }
