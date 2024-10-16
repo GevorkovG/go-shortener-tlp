@@ -23,7 +23,7 @@ type AppConfig struct {
 
 func NewCfg() *AppConfig {
 
-	a := &AppConfig{}
+	a := AppConfig{}
 
 	ps := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
 		DBhost, DBuser, DBpassword, DBdbname)
@@ -40,5 +40,5 @@ func NewCfg() *AppConfig {
 		panic(err)
 	}
 
-	return a
+	return &a
 }
