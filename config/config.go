@@ -10,7 +10,7 @@ import (
 const (
 	DBhost     = "localhost"
 	DBuser     = "postgres"
-	DBpassword = ""
+	DBpassword = "!"
 	DBdbname   = "short"
 )
 

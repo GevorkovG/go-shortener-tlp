@@ -161,7 +161,7 @@ func Run() {
 	newApp := NewApp(conf)
 
 	if err := newApp.ConfigureDB(); err != nil {
-		log.Println("Can't configure Database!")
+		log.Printf("Can't configure Database! %s", newApp.cfg.DataBaseString)
 	}
 
 	data, err := storage.LoadFromFile(conf.FilePATH)
