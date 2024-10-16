@@ -180,6 +180,7 @@ func Run() {
 
 	r.Post("/api/shorten", newApp.JSONGetShortURL)
 	r.Get("/{id}", newApp.GetOriginURL)
+	r.Get("/ping", newApp.Ping)
 	r.Post("/", newApp.GetShortURL)
 	//end router
 
