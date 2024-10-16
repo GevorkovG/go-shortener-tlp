@@ -3,7 +3,6 @@ module github.com/GevorkovG/go-shortener-tlp
 go 1.22.5
 
 require (
-	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0

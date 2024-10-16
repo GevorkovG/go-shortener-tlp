@@ -2,6 +2,7 @@ package app
 
 import (
 	"compress/gzip"
+	"flag"
 	"io"
 	"log"
 	"net/http"
@@ -182,6 +183,7 @@ func Run() {
 	r.Post("/", newApp.GetShortURL)
 	//end router
 
+	flag.Parse()
 	log.Fatal(http.ListenAndServe(conf.Host, r))
 
 }
