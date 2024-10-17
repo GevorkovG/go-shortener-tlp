@@ -2,7 +2,6 @@ package app
 
 import (
 	"compress/gzip"
-	"flag"
 	"io"
 	"log"
 	"net/http"
@@ -13,18 +12,6 @@ import (
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 	"github.com/go-chi/chi"
 )
-
-type App struct {
-	cfg     *config.AppConfig
-	Storage *storage.InMemoryStorage
-}
-
-func NewApp(cfg *config.AppConfig) *App {
-	return &App{
-		cfg:     cfg,
-		Storage: storage.NewInMemoryStorage(),
-	}
-}
 
 // compressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
 // сжимать передаваемые данные и выставлять правильные HTTP-заголовки
@@ -130,28 +117,33 @@ func gzipMiddleware(h http.Handler) http.Handler {
 
 func Run() {
 	conf := config.NewCfg()
+	logg.InitLogger()
 	newApp := NewApp(conf)
 
-	data, err := storage.LoadFromFile(conf.FilePATH)
-
-	if err != nil {
-		log.Fatal(err)
+	//Подключение Postgres при наличии флага
+	if err := newApp.ConfigureDB(); err != nil {
+		log.Printf("Can't configure Database! %s %s", err, newApp.cfg.DataBaseString)
 	}
 
-	newApp.Storage.Load(data)
+	//Подключение файла при наличии флага
+	if conf.FilePATH != "" {
+		data, err := storage.LoadFromFile(conf.FilePATH)
+		if err != nil {
+			log.Fatal(err)
+		}
+		newApp.Storage.Load(data)
+	}
 
-	//router
 	r := chi.NewRouter()
 
-	r.Use(logg.WithLogging)
+	r.Use(logg.Logger)
 	r.Use(gzipMiddleware)
 
 	r.Post("/api/shorten", newApp.JSONGetShortURL)
-	r.Get("/{id}", newApp.GetOriginURL)
+	r.Get("/{id}", newApp.GetOriginalURL)
+	r.Get("/ping", newApp.Ping)
 	r.Post("/", newApp.GetShortURL)
-	//end router
 
-	flag.Parse()
 	log.Fatal(http.ListenAndServe(conf.Host, r))
 
 }
