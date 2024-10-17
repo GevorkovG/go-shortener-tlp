@@ -58,7 +58,7 @@ func Test_GetOriginalURL(t *testing.T) {
 
 	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, router))
 
-	app.GetOriginURL(w, r)
+	app.GetOriginalURL(w, r)
 
 	assert.Equal(t, test.want.code, w.Code, "Код ответа (307) не совпадает с ожидаемым")
 	assert.Equal(t, test.want.location, w.Header().Get("Location"), "Location не совпадает с ожидаемым")

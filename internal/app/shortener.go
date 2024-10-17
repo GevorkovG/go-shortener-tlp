@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strings"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
@@ -51,12 +52,16 @@ func (l *Link) GetOriginal(short string) (*Link, error) {
 }
 
 func generateID() string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	b := make([]rune, 8)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+	alphabet := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	number := rand.Uint64()
+	length := len(alphabet)
+	var encodedBuilder strings.Builder
+	encodedBuilder.Grow(10)
+	for ; number > 0; number = number / uint64(length) {
+		encodedBuilder.WriteByte(alphabet[(number % uint64(length))])
 	}
-	return string(b)
+
+	return encodedBuilder.String()
 }
 
 type Request struct {
@@ -132,15 +137,16 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	responseData, err := io.ReadAll(r.Body)
+
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read request body: %s", err), http.StatusBadRequest)
 		return
 	}
-	url := string(responseData)
-	if url == "" {
+	if string(responseData) == "" {
 		http.Error(w, "Empty POST request body!", http.StatusBadRequest)
 		return
 	}
+	url := string(responseData)
 
 	id := generateID()
 
@@ -175,19 +181,6 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	a.Storage.SetURL(id, url)
 
-	fileStorage := storage.NewFileStorage()
-
-	fileStorage.Short = id
-	fileStorage.Original = url
-
-	err = storage.SaveToFile(fileStorage, a.cfg.FilePATH)
-
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", id)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
@@ -198,19 +191,18 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *App) GetOriginURL(w http.ResponseWriter, r *http.Request) {
+func (a *App) GetOriginalURL(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 
 	linkModel := &Link{
 		Store: a.DataBase,
 	}
-
 	var err error
 	if a.DBReady {
 		linkModel, err = linkModel.GetOriginal(id)
 		if err != nil {
-			log.Println("Didn't read data from table")
+			log.Println("Don't read data from table")
 			log.Println(err)
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 		}
@@ -221,6 +213,7 @@ func (a *App) GetOriginURL(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 		}
 	}
+
 	w.Header().Set("Location", linkModel.Original)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }

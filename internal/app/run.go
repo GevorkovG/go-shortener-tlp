@@ -140,7 +140,7 @@ func Run() {
 	r.Use(gzipMiddleware)
 
 	r.Post("/api/shorten", newApp.JSONGetShortURL)
-	r.Get("/{id}", newApp.GetOriginURL)
+	r.Get("/{id}", newApp.GetOriginalURL)
 	r.Get("/ping", newApp.Ping)
 	r.Post("/", newApp.GetShortURL)
 
