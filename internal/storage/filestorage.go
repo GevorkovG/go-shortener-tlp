@@ -7,6 +7,11 @@ import (
 	"os"
 )
 
+type FileStorage struct {
+	Short    string `json:"short_url"`
+	Original string `json:"original_url"`
+}
+
 func NewFileStorage() *FileStorage {
 	return &FileStorage{}
 }
@@ -23,17 +28,14 @@ func SaveToFile(fs *FileStorage, fileName string) error {
 	return err
 }
 
-type FileStorage struct {
-	Short    string `json:"short_url"`
-	Original string `json:"original_url"`
-}
-
 func LoadFromFile(fileName string) (map[string]string, error) {
+
 	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
+
 	scanner := bufio.NewScanner(file)
 
 	data := make(map[string]string)

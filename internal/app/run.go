@@ -2,7 +2,6 @@ package app
 
 import (
 	"compress/gzip"
-	"flag"
 	"io"
 	"log"
 	"net/http"
@@ -118,8 +117,8 @@ func gzipMiddleware(h http.Handler) http.Handler {
 
 func Run() {
 	conf := config.NewCfg()
+	logg.InitLogger()
 	newApp := NewApp(conf)
-	flag.Parse()
 
 	//Подключение Postgres при наличии флага
 	if err := newApp.ConfigureDB(); err != nil {
@@ -137,7 +136,7 @@ func Run() {
 
 	r := chi.NewRouter()
 
-	r.Use(logg.WithLogging)
+	r.Use(logg.Logger)
 	r.Use(gzipMiddleware)
 
 	r.Post("/api/shorten", newApp.JSONGetShortURL)

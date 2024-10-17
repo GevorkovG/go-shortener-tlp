@@ -57,6 +57,7 @@ func NewCfg() *AppConfig {
 	if datab := os.Getenv("DATABASE_DSN"); datab != "" {
 		a.DataBaseString = datab
 	}
+	flag.Parse()
 
 	return a
 }
