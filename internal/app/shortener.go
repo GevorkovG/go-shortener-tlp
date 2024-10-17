@@ -122,6 +122,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	response, err := json.Marshal(result)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -147,7 +148,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := string(responseData)
-
+	fmt.Println(url)
 	id := generateID()
 
 	linkModel := Link{
@@ -202,7 +203,7 @@ func (a *App) GetOriginalURL(w http.ResponseWriter, r *http.Request) {
 	if a.DBReady {
 		linkModel, err = linkModel.GetOriginal(id)
 		if err != nil {
-			log.Println("Don't read data from table")
+			log.Println("Didn't read data from table")
 			log.Println(err)
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 		}

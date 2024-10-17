@@ -1,7 +1,7 @@
 package app
 
 import (
-	"log"
+	"errors"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
@@ -32,6 +32,5 @@ func (a *App) ConfigureDB() error {
 		a.DBReady = true
 		return nil
 	}
-	log.Println("dataBaseString is empty")
-	return nil
+	return errors.New("dataBaseString is empty")
 }
