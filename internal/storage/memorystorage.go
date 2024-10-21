@@ -2,6 +2,8 @@ package storage
 
 import (
 	"errors"
+
+	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 )
 
 type InMemoryStorage struct {
@@ -18,15 +20,28 @@ func (s *InMemoryStorage) Load(data map[string]string) {
 	s.urls = data
 }
 
-func (s *InMemoryStorage) SetURL(key, value string) {
-	s.urls[key] = value
+func (s *InMemoryStorage) Insert(link objects.Link) error {
+	s.urls[link.Short] = link.Original
+	return nil
 }
 
-func (s *InMemoryStorage) GetURL(key string) (string, error) {
+func (s *InMemoryStorage) InsertLinks(links []objects.Link) error {
 
-	url, ok := s.urls[key]
-	if ok {
-		return url, nil
+	for _, v := range links {
+		s.urls[v.Short] = v.Original
 	}
-	return "", errors.New("id not found")
+	return nil
+}
+
+func (s *InMemoryStorage) GetURL(short string) (objects.Link, error) {
+
+	var ok bool
+	link := objects.Link{
+		Short: short,
+	}
+	link.Original, ok = s.urls[link.Short]
+	if ok {
+		return link, nil
+	}
+	return link, errors.New("id not found")
 }

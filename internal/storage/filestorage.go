@@ -5,18 +5,23 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+
+	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 )
 
 type FileStorage struct {
-	Short    string `json:"short_url"`
-	Original string `json:"original_url"`
+	memStorage *InMemoryStorage
+	filePATH   string
 }
 
-func NewFileStorage() *FileStorage {
-	return &FileStorage{}
+func NewFileStorage(path string) *FileStorage {
+	return &FileStorage{
+		memStorage: NewInMemoryStorage(),
+		filePATH:   path,
+	}
 }
 
-func SaveToFile(fs *FileStorage, fileName string) error {
+func SaveToFile(fs objects.Link, fileName string) error {
 
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -25,6 +30,20 @@ func SaveToFile(fs *FileStorage, fileName string) error {
 	defer file.Close()
 	encoder := json.NewEncoder(file)
 	err = encoder.Encode(fs)
+	return err
+}
+
+func AllSaveToFile(links []objects.Link, fileName string) error {
+
+	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	for _, v := range links {
+		err = encoder.Encode(v)
+	}
 	return err
 }
 
@@ -41,7 +60,7 @@ func LoadFromFile(fileName string) (map[string]string, error) {
 	data := make(map[string]string)
 
 	for scanner.Scan() {
-		var d FileStorage
+		var d objects.Link
 		// Декодируем строку из формата json
 		err = json.Unmarshal(scanner.Bytes(), &d)
 		if err != nil {
@@ -51,4 +70,45 @@ func LoadFromFile(fileName string) (map[string]string, error) {
 		data[d.Short] = d.Original
 	}
 	return data, nil
+}
+
+func (fs *FileStorage) Load(data map[string]string) {
+	fs.memStorage.Load(data)
+}
+
+func (fs *FileStorage) Insert(link objects.Link) error {
+
+	err := fs.memStorage.Insert(link)
+	if err != nil {
+		return err
+	}
+	err2 := SaveToFile(link, fs.filePATH)
+	if err2 != nil {
+		return err2
+	}
+	return nil
+}
+
+func (fs *FileStorage) InsertLinks(links []objects.Link) error {
+
+	err := fs.memStorage.InsertLinks(links)
+	if err != nil {
+		return err
+	}
+	err2 := AllSaveToFile(links, fs.filePATH)
+	if err2 != nil {
+		return err2
+	}
+	return err
+}
+
+func (fs *FileStorage) GetOriginal(short string) (objects.Link, error) {
+
+	link, err := fs.memStorage.GetURL(short)
+
+	if err != nil {
+		log.Println("")
+		return link, err
+	}
+	return link, nil
 }

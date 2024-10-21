@@ -2,12 +2,14 @@ package app
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
+	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 )
@@ -48,7 +50,14 @@ func Test_GetOriginalURL(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			app.Storage.SetURL(test.body, resultURL)
+			link := objects.Link{
+				Short:    test.body,
+				Original: resultURL,
+			}
+
+			if err := app.Storage.Insert(link); err != nil {
+				log.Println(err)
+			}
 
 			r := httptest.NewRequest(test.method, "http://localhost:8080/"+test.body, nil)
 

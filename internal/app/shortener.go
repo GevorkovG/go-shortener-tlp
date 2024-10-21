@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
-	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
+	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 
 	"github.com/go-chi/chi"
 )
@@ -82,41 +82,20 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := generateID()
-
-	linkModel := Link{
-		Short:    id,
+	link := objects.Link{
+		Short:    generateID(),
 		Original: req.URL,
-		Store:    a.DataBase,
 	}
 
-	if a.DBReady {
-		_, err = linkModel.Insert(&linkModel)
-		if err != nil {
-			log.Println("Don't insert url!")
-			log.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else if a.cfg.FilePATH != "" {
-
-		fileStorage := storage.NewFileStorage()
-
-		fileStorage.Short = id
-		fileStorage.Original = req.URL
-
-		err = storage.SaveToFile(fileStorage, a.cfg.FilePATH)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	if err := a.Storage.Insert(link); err != nil {
+		log.Println("Don't insert url!")
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-
-	a.Storage.SetURL(id, req.URL)
 
 	result := Response{
-		Result: a.cfg.ResultURL + "/" + id,
+		Result: a.cfg.ResultURL + "/" + link.Short,
 	}
 
 	response, err := json.Marshal(result)
@@ -147,42 +126,20 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Empty POST request body!", http.StatusBadRequest)
 		return
 	}
-	url := string(responseData)
-	fmt.Println(url)
-	id := generateID()
 
-	linkModel := Link{
-		Short:    id,
-		Original: url,
-		Store:    a.DataBase,
+	link := objects.Link{
+		Short:    generateID(),
+		Original: string(responseData),
 	}
 
-	if a.DBReady {
-		_, err = linkModel.Insert(&linkModel)
-		if err != nil {
-			log.Println("Don't insert url!")
-			log.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else if a.cfg.FilePATH != "" {
-		fileStorage := storage.NewFileStorage()
-
-		fileStorage.Short = id
-		fileStorage.Original = url
-
-		err = storage.SaveToFile(fileStorage, a.cfg.FilePATH)
-
-		if err != nil {
-			log.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	if err := a.Storage.Insert(link); err != nil {
+		log.Println("Don't insert url!")
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	a.Storage.SetURL(id, url)
-
-	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", id)
+	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", link.Short)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 
@@ -196,25 +153,15 @@ func (a *App) GetOriginalURL(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 
-	linkModel := &Link{
-		Store: a.DataBase,
-	}
-	var err error
-	if a.DBReady {
-		linkModel, err = linkModel.GetOriginal(id)
-		if err != nil {
-			log.Println("Didn't read data from table")
-			log.Println(err)
-			http.Error(w, "Invalid URL", http.StatusBadRequest)
-		}
-	}
-	if linkModel.Original == "" {
-		linkModel.Original, err = a.Storage.GetURL(id)
-		if err != nil {
-			http.Error(w, "Invalid URL", http.StatusBadRequest)
-		}
+	link, err := a.Storage.GetURL(id)
+
+	if err != nil {
+		log.Println("Don't read data from table")
+		log.Println(err)
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
 	}
 
-	w.Header().Set("Location", linkModel.Original)
+	w.Header().Set("Location", link.Original)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
