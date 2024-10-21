@@ -9,7 +9,6 @@ import (
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	logg "github.com/GevorkovG/go-shortener-tlp/internal/log"
-	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 	"github.com/go-chi/chi"
 )
 
@@ -119,20 +118,6 @@ func Run() {
 	conf := config.NewCfg()
 	logg.InitLogger()
 	newApp := NewApp(conf)
-
-	//Подключение Postgres при наличии флага
-	if err := newApp.ConfigureDB(); err != nil {
-		log.Printf("Can't configure Database! %s %s", err, newApp.cfg.DataBaseString)
-	}
-
-	//Подключение файла при наличии флага
-	if conf.FilePATH != "" {
-		data, err := storage.LoadFromFile(conf.FilePATH)
-		if err != nil {
-			log.Fatal(err)
-		}
-		newApp.Storage.Load(data)
-	}
 
 	r := chi.NewRouter()
 

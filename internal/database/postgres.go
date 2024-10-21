@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"log"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -34,4 +35,12 @@ func (store *DBStore) Open() error {
 
 func (store *DBStore) Close() {
 	store.DB.Close()
+}
+
+func (pg *DBStore) PingDB() error {
+	if err := pg.DB.Ping(); err != nil {
+		log.Println("don't ping Database")
+		return err
+	}
+	return nil
 }
