@@ -4,8 +4,8 @@ import (
 	"log"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
+	dbmodel "github.com/GevorkovG/go-shortener-tlp/internal/DBmodel"
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
-	"github.com/GevorkovG/go-shortener-tlp/internal/dbmodel"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 )
