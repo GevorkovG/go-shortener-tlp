@@ -24,11 +24,12 @@ func (a *App) APIshortBatch(w http.ResponseWriter, r *http.Request) {
 	var (
 		originals []Req
 		shorts    []Resp
-		links     []objects.Link
+		links     []*objects.Link
 	)
 
 	err := json.NewDecoder(r.Body).Decode(&originals)
 	if err != nil {
+		log.Println("didn't decode body")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -40,7 +41,7 @@ func (a *App) APIshortBatch(w http.ResponseWriter, r *http.Request) {
 			ID:    val.ID,
 			Short: fmt.Sprintf(a.cfg.ResultURL+"/%s", key),
 		}
-		link := objects.Link{
+		link := &objects.Link{
 			Short:    key,
 			Original: val.URL,
 		}

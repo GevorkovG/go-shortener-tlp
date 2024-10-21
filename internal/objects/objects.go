@@ -7,7 +7,8 @@ type Link struct {
 }
 
 type Storage interface {
-	Insert(link Link) error
-	InsertLinks(links []Link) error
-	GetOriginal(short string) (Link, error)
+	Insert(link *Link) error
+	InsertLinks(links []*Link) error
+	GetOriginal(short string) (*Link, error)
+	GetShort(original string) (*Link, error)
 }

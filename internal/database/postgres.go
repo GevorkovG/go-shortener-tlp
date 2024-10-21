@@ -12,6 +12,24 @@ type DBStore struct {
 	DB           *sql.DB
 }
 
+func InitDB(conn string) *DBStore {
+	if conn == "" {
+		return nil
+	}
+	db := NewDB(conn)
+	if err := db.Open(); err != nil {
+		log.Println("Don't connect DataBase")
+		log.Fatal(err)
+		return nil
+	}
+	if err := db.PingDB(); err != nil {
+		log.Println("Don't ping DataBase")
+		log.Fatal(err)
+		return nil
+	}
+	return db
+}
+
 func NewDB(conf string) *DBStore {
 	return &DBStore{
 		DatabaseConf: conf,

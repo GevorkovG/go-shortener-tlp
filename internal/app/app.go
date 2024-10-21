@@ -1,8 +1,6 @@
 package app
 
 import (
-	"log"
-
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	dbmodel "github.com/GevorkovG/go-shortener-tlp/internal/DBmodel"
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
@@ -19,8 +17,8 @@ type App struct {
 func NewApp(cfg *config.AppConfig) *App {
 
 	return &App{
-		cfg:     cfg,
-		Storage: ConfigureStorage(cfg),
+		cfg:      cfg,
+		DataBase: database.InitDB(cfg.DataBaseString),
 	}
 }
 
@@ -39,34 +37,13 @@ func confDB(conn string) (*database.DBStore, error) {
 	return db, nil
 }
 
-func ConfigureStorage(conf *config.AppConfig) objects.Storage {
-	if conf.DataBaseString != "" {
-		db, err := confDB(conf.DataBaseString)
-		if err == nil {
-			return &dbmodel.Link{
-				Store: db,
-			}
-		} else {
-			log.Fatal(err)
-			return nil
-		}
-
-	} else if conf.FilePATH != "" {
-		store := storage.NewFileStorage(conf.FilePATH)
-
-		data, err := storage.LoadFromFile(conf.FilePATH)
-
-		store.Load(data)
-
-		if err != nil {
-			log.Println("Don't load from file!")
-			log.Fatal(err)
-			return nil
-		}
-
-		store.Load(data)
-
-		return store
+func (a *App) ConfigureStorage() {
+	switch {
+	case a.cfg.DataBaseString != "":
+		a.Storage = dbmodel.NewLinkStorage(a.DataBase)
+	case a.cfg.FilePATH != "":
+		a.Storage = storage.NewFileStorage(a.cfg.FilePATH)
+	default:
+		a.Storage = storage.NewInMemoryStorage()
 	}
-	return storage.NewInMemoryStorage()
 }

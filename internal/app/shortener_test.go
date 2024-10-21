@@ -50,7 +50,7 @@ func Test_GetOriginalURL(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			link := objects.Link{
+			link := &objects.Link{
 				Short:    test.body,
 				Original: resultURL,
 			}

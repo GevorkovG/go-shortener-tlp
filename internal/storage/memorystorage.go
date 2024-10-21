@@ -20,12 +20,12 @@ func (s *InMemoryStorage) Load(data map[string]string) {
 	s.urls = data
 }
 
-func (s *InMemoryStorage) Insert(link objects.Link) error {
+func (s *InMemoryStorage) Insert(link *objects.Link) error {
 	s.urls[link.Short] = link.Original
 	return nil
 }
 
-func (s *InMemoryStorage) InsertLinks(links []objects.Link) error {
+func (s *InMemoryStorage) InsertLinks(links []*objects.Link) error {
 
 	for _, v := range links {
 		s.urls[v.Short] = v.Original
@@ -33,15 +33,30 @@ func (s *InMemoryStorage) InsertLinks(links []objects.Link) error {
 	return nil
 }
 
-func (s *InMemoryStorage) GetOriginal(short string) (objects.Link, error) {
+func (s *InMemoryStorage) GetOriginal(short string) (*objects.Link, error) {
 
 	var ok bool
-	link := objects.Link{
+	link := &objects.Link{
 		Short: short,
 	}
 	link.Original, ok = s.urls[link.Short]
 	if ok {
 		return link, nil
+	}
+	return link, errors.New("id not found")
+}
+
+func (s *InMemoryStorage) GetShort(original string) (*objects.Link, error) {
+
+	link := &objects.Link{
+		Original: original,
+	}
+
+	for k, v := range s.urls {
+		if v == original {
+			link.Short = k
+			return link, nil
+		}
 	}
 	return link, errors.New("id not found")
 }

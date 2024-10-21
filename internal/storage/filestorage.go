@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
+	"go.uber.org/zap"
 )
 
 type FileStorage struct {
@@ -21,7 +22,7 @@ func NewFileStorage(path string) *FileStorage {
 	}
 }
 
-func SaveToFile(fs objects.Link, fileName string) error {
+func SaveToFile(fs *objects.Link, fileName string) error {
 
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -33,7 +34,7 @@ func SaveToFile(fs objects.Link, fileName string) error {
 	return err
 }
 
-func AllSaveToFile(links []objects.Link, fileName string) error {
+func AllSaveToFile(links []*objects.Link, fileName string) error {
 
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -76,7 +77,7 @@ func (fs *FileStorage) Load(data map[string]string) {
 	fs.memStorage.Load(data)
 }
 
-func (fs *FileStorage) Insert(link objects.Link) error {
+func (fs *FileStorage) Insert(link *objects.Link) error {
 
 	err := fs.memStorage.Insert(link)
 	if err != nil {
@@ -89,7 +90,7 @@ func (fs *FileStorage) Insert(link objects.Link) error {
 	return nil
 }
 
-func (fs *FileStorage) InsertLinks(links []objects.Link) error {
+func (fs *FileStorage) InsertLinks(links []*objects.Link) error {
 
 	err := fs.memStorage.InsertLinks(links)
 	if err != nil {
@@ -102,12 +103,23 @@ func (fs *FileStorage) InsertLinks(links []objects.Link) error {
 	return err
 }
 
-func (fs *FileStorage) GetOriginal(short string) (objects.Link, error) {
+func (fs *FileStorage) GetOriginal(short string) (*objects.Link, error) {
 
 	link, err := fs.memStorage.GetOriginal(short)
 
 	if err != nil {
 		log.Println("")
+		return link, err
+	}
+	return link, nil
+}
+
+func (fs *FileStorage) GetShort(original string) (*objects.Link, error) {
+
+	link, err := fs.memStorage.GetShort(original)
+
+	if err != nil {
+		zap.L().Error("Don't get short URL", zap.Error(err))
 		return link, err
 	}
 	return link, nil
