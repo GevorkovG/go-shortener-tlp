@@ -104,7 +104,7 @@ func (fs *FileStorage) InsertLinks(links []objects.Link) error {
 
 func (fs *FileStorage) GetOriginal(short string) (objects.Link, error) {
 
-	link, err := fs.memStorage.GetURL(short)
+	link, err := fs.memStorage.GetOriginal(short)
 
 	if err != nil {
 		log.Println("")

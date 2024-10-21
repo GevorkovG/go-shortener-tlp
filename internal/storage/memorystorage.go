@@ -33,7 +33,7 @@ func (s *InMemoryStorage) InsertLinks(links []objects.Link) error {
 	return nil
 }
 
-func (s *InMemoryStorage) GetURL(short string) (objects.Link, error) {
+func (s *InMemoryStorage) GetOriginal(short string) (objects.Link, error) {
 
 	var ok bool
 	link := objects.Link{
