@@ -4,8 +4,8 @@ import (
 	"log"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
-	"github.com/GevorkovG/go-shortener-tlp/internal/DBmodel"
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
+	"github.com/GevorkovG/go-shortener-tlp/internal/dbmodel"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 )
@@ -43,7 +43,7 @@ func ConfigureStorage(conf *config.AppConfig) objects.Storage {
 	if conf.DataBaseString != "" {
 		db, err := confDB(conf.DataBaseString)
 		if err == nil {
-			return &DBmodel.Link{
+			return &dbmodel.Link{
 				Store: db,
 			}
 		} else {

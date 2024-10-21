@@ -1,4 +1,4 @@
-package DBmodel
+package dbmodel
 
 import (
 	"log"
