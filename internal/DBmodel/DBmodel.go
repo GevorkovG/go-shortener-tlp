@@ -8,7 +8,7 @@ import (
 )
 
 type Link struct {
-	Store *database.PG
+	Store *database.DBStore
 }
 
 func (l *Link) CreateTable() error {
@@ -58,7 +58,7 @@ func (l *Link) InsertLinks(links []objects.Link) error {
 
 func (l *Link) GetOriginal(short string) (objects.Link, error) {
 
-	link := entities.Link{
+	link := objects.Link{
 		Short: short,
 	}
 	if err := l.Store.DB.QueryRow("SELECT original FROM links WHERE short = $1", link.Short).Scan(&link.Original); err != nil {
