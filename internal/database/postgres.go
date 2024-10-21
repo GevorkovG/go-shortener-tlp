@@ -37,8 +37,8 @@ func (store *DBStore) Close() {
 	store.DB.Close()
 }
 
-func (pg *DBStore) PingDB() error {
-	if err := pg.DB.Ping(); err != nil {
+func (store *DBStore) PingDB() error {
+	if err := store.DB.Ping(); err != nil {
 		log.Println("don't ping Database")
 		return err
 	}
