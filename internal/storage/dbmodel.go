@@ -37,7 +37,7 @@ func (l *Link) Insert(link *objects.Link) error {
 	}
 	fmt.Println("here")
 	if _, err := l.Store.DB.Exec(
-		"INSERT INTO links (short, original) VALUES ($1,$2)",
+		"INSERT INTO links (short, original) VALUES ($1,$2) ON CONFLICT (short) DO NOTHING",
 		link.Short, link.Original); err != nil {
 		var pgErr *pgconn.PgError
 		fmt.Println("*", err)
