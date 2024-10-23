@@ -35,13 +35,6 @@ func (l *Link) Insert(link *objects.Link) error {
 	if err := l.CreateTable(); err != nil {
 		return err
 	}
-	fmt.Println("here")
-
-	if sh := l.Store.DB.QueryRow("SELECT original FROM links WHERE short = $1", link.Short); sh != nil {
-		fmt.Println("conflict")
-		return ErrConflict
-	}
-
 	if _, err := l.Store.DB.Exec(
 		"INSERT INTO links (short, original) VALUES ($1,$2)",
 		link.Short, link.Original); err != nil {
