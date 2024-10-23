@@ -23,7 +23,7 @@ func Test_GetOriginalURL(t *testing.T) {
 	}
 
 	app := NewApp(conf)
-
+	app.ConfigureStorage()
 	resultURL := "https://yandex.ru"
 
 	type want struct {
@@ -117,6 +117,7 @@ func Test_JSONGetShortURL(t *testing.T) {
 	}
 
 	app := NewApp(conf)
+	app.ConfigureStorage()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -173,6 +174,7 @@ func Test_GetShortURL(t *testing.T) {
 	}
 
 	app := NewApp(conf)
+	app.ConfigureStorage()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
