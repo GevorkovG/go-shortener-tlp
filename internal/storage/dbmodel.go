@@ -3,7 +3,6 @@ package storage
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
@@ -82,7 +81,7 @@ func (l *Link) GetOriginal(short string) (*objects.Link, error) {
 		Short: short,
 	}
 	if err := l.Store.DB.QueryRow("SELECT original FROM links WHERE short = $1", link.Short).Scan(&link.Original); err != nil {
-		log.Println(err)
+		zap.L().Error("Don't get original URL", zap.Error(err))
 		return link, err
 	}
 	return link, nil
