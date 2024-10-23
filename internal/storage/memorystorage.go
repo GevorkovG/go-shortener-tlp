@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 )
@@ -21,6 +22,7 @@ func (s *InMemoryStorage) Load(data map[string]string) {
 }
 
 func (s *InMemoryStorage) Insert(link *objects.Link) error {
+	fmt.Println(link)
 	s.urls[link.Short] = link.Original
 	return nil
 }

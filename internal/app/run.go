@@ -130,6 +130,7 @@ func Run() {
 	conf := config.NewCfg()
 	logg.InitLogger()
 	newApp := NewApp(conf)
+	newApp.ConfigureStorage()
 
 	r := chi.NewRouter()
 
