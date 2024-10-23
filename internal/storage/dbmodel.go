@@ -25,7 +25,7 @@ func NewLinkStorage(db *database.DBStore) *Link {
 }
 
 func (l *Link) CreateTable() error {
-	if _, err := l.Store.DB.Exec("CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY , short CHAR (20), original CHAR (255));"); err != nil {
+	if _, err := l.Store.DB.Exec("CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY , short CHAR (20) UNIQUE, original CHAR (255) UNIQUE);"); err != nil {
 		return err
 	}
 	return nil
