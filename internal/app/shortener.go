@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -9,8 +10,10 @@ import (
 	"net/http"
 	"strings"
 
+	dbmodel "github.com/GevorkovG/go-shortener-tlp/internal/DBmodel"
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi"
 )
@@ -75,6 +78,7 @@ type Response struct {
 func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	var req Request
+	var status = http.StatusCreated
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -87,11 +91,20 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 		Original: req.URL,
 	}
 
-	if err := a.Storage.Insert(link); err != nil {
-		log.Println("Don't insert url!")
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err = a.Storage.Insert(link); err != nil {
+		if errors.Is(err, dbmodel.ErrConflict) {
+			link, err = a.Storage.GetShort(link.Original)
+			if err != nil {
+				zap.L().Error("Don't get short URL", zap.Error(err))
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			status = http.StatusConflict
+		} else {
+			zap.L().Error("Don't insert URL", zap.Error(err))
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	result := Response{
@@ -105,7 +118,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(status)
 
 	_, err = w.Write(response)
 	if err != nil {
@@ -115,6 +128,8 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
+
+	var status = http.StatusCreated
 
 	responseData, err := io.ReadAll(r.Body)
 
@@ -132,16 +147,26 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		Original: string(responseData),
 	}
 	fmt.Println(link)
-	if err := a.Storage.Insert(link); err != nil {
-		log.Println("Don't insert url!")
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+
+	if err = a.Storage.Insert(link); err != nil {
+		if errors.Is(err, dbmodel.ErrConflict) {
+			link, err = a.Storage.GetShort(link.Original)
+			if err != nil {
+				zap.L().Error("Don't get short URL", zap.Error(err))
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			status = http.StatusConflict
+		} else {
+			zap.L().Error("Don't insert URL", zap.Error(err))
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", link.Short)
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(status)
 
 	_, err = io.WriteString(w, response)
 	if err != nil {
