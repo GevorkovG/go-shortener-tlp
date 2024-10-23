@@ -2,146 +2,190 @@ package app
 
 import (
 	"context"
-	"flag"
+	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
+	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_GetOriginalURL(t *testing.T) {
 
-	//очищаем флаги командной строки
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	conf := &config.AppConfig{
+		Host:      "localhost:8080",
+		ResultURL: "http://localhost:8080",
+		//FilePATH:  "/tmp/short-url-db.json",
+	}
 
-	conf := config.NewCfg()
 	app := NewApp(conf)
-
+	app.ConfigureStorage()
 	resultURL := "https://yandex.ru"
 
 	type want struct {
 		code     int
 		location string
 	}
-
-	type testInf struct {
+	tests := []struct {
+		name   string
 		method string
-		url    string
-		testID string
+		body   string
 		want   want
-	}
-
-	test := testInf{
-		method: http.MethodGet,
-		url:    "http://localhost:8080/vRFgdzs",
-		testID: "vRFgdzs",
-		want: want{
-			code:     307,
-			location: resultURL,
+	}{
+		{
+			name:   "test#1-ok",
+			method: http.MethodPost,
+			body:   "vRFgdzs",
+			want: want{
+				code:     307,
+				location: resultURL,
+			},
 		},
 	}
 
-	app.Storage.SetURL(test.testID, resultURL)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
 
-	r := httptest.NewRequest(test.method, test.url, nil)
+			link := &objects.Link{
+				Short:    test.body,
+				Original: resultURL,
+			}
 
-	w := httptest.NewRecorder()
+			if err := app.Storage.Insert(link); err != nil {
+				log.Println(err)
+			}
 
-	router := chi.NewRouteContext()
+			r := httptest.NewRequest(test.method, "http://localhost:8080/"+test.body, nil)
 
-	router.URLParams.Add("id", test.testID)
+			w := httptest.NewRecorder()
 
-	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, router))
+			router := chi.NewRouteContext()
 
-	app.GetOriginURL(w, r)
+			router.URLParams.Add("id", test.body)
 
-	assert.Equal(t, test.want.code, w.Code, "Код ответа (307) не совпадает с ожидаемым")
-	assert.Equal(t, test.want.location, w.Header().Get("Location"), "Location не совпадает с ожидаемым")
+			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, router))
 
+			app.GetOriginalURL(w, r)
+
+			assert.Equal(t, test.want.code, w.Code, "Код ответа (307) не совпадает с ожидаемым")
+			assert.Equal(t, test.want.location, w.Header().Get("Location"), "Location не совпадает с ожидаемым")
+		})
+	}
 }
 
 func Test_JSONGetShortURL(t *testing.T) {
 
-	//очищаем флаги командной строки
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	type want struct {
+		code        int
+		contentType string
+	}
 
-	type (
-		want struct {
-			code        int
-			contentType string
-			location    string
-		}
-
-		testInf struct {
-			method string
-			want   want
-		}
-	)
-
-	test := testInf{
-		method: http.MethodPost,
-		want: want{
-			code:        201,
-			contentType: "application/json",
+	tests := []struct {
+		name   string
+		method string
+		body   string
+		want   want
+	}{
+		{
+			name:   "test#1-ok",
+			method: http.MethodPost,
+			body:   `{"url": "https://yandex.ru"}`,
+			want: want{
+				code:        201,
+				contentType: "application/json",
+			},
+		},
+		{
+			name:   "test#-fail",
+			method: http.MethodPost,
+			body:   "sdfqwed",
+			want: want{
+				code:        400,
+				contentType: "text/plain; charset=utf-8",
+			},
 		},
 	}
 
-	conf := config.NewCfg()
+	conf := &config.AppConfig{
+		Host:      "localhost:8080",
+		ResultURL: "http://localhost:8080",
+		FilePATH:  "/tmp/short-url-db.json",
+	}
+
 	app := NewApp(conf)
+	app.ConfigureStorage()
 
-	r := httptest.NewRequest(test.method, "https://localhost:8080", strings.NewReader(`{"url": "https://yandex.ru"}`))
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := httptest.NewRequest(test.method, "https://localhost:8080/api/shorten", strings.NewReader(test.body))
 
-	w := httptest.NewRecorder()
+			w := httptest.NewRecorder()
 
-	app.JSONGetShortURL(w, r)
+			app.JSONGetShortURL(w, r)
 
-	assert.Equal(t, test.want.code, w.Code, "Код ответа не совпадает с ожидаемым")
-	assert.Equal(t, test.want.contentType, w.Header().Get("Content-Type"), "Тип контента не совпадает с ожидаемым")
+			assert.Equal(t, test.want.code, w.Code, "Код ответа не совпадает с ожидаемым")
+			assert.Equal(t, test.want.contentType, w.Header().Get("Content-Type"), "Тип контента не совпадает с ожидаемым")
+		})
+	}
 
 }
 
 func Test_GetShortURL(t *testing.T) {
 
-	//очищаем флаги командной строки
-	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-
 	type want struct {
 		code        int
 		contentType string
-		location    string
 	}
-	testURL := "https://yandex.ru"
 
-	type testInf struct {
+	tests := []struct {
+		name   string
 		method string
-		url    string
+		body   string
 		want   want
-	}
-
-	test := testInf{
-		method: http.MethodPost,
-		url:    testURL,
-		want: want{
-			code:        201,
-			contentType: "text/plain",
+	}{
+		{
+			name:   "test#1-ok",
+			method: http.MethodPost,
+			body:   "https://yandex.ru",
+			want: want{
+				code:        201,
+				contentType: "text/plain",
+			},
+		},
+		{
+			name:   "test#2-fail",
+			method: http.MethodPost,
+			body:   "",
+			want: want{
+				code:        400,
+				contentType: "text/plain; charset=utf-8",
+			},
 		},
 	}
 
-	conf := config.NewCfg()
+	conf := &config.AppConfig{
+		Host:      "localhost:8080",
+		ResultURL: "http://localhost:8080",
+		//FilePATH:  "/tmp/short-url-db.json",
+	}
+
 	app := NewApp(conf)
+	app.ConfigureStorage()
 
-	r := httptest.NewRequest(test.method, "https://localhost:8080", strings.NewReader(test.url))
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := httptest.NewRequest(test.method, "https://localhost:8080", strings.NewReader(test.body))
 
-	w := httptest.NewRecorder()
+			w := httptest.NewRecorder()
 
-	app.GetShortURL(w, r)
+			app.GetShortURL(w, r)
 
-	assert.Equal(t, test.want.code, w.Code, "Код ответа не совпадает с ожидаемым")
-	assert.Equal(t, test.want.contentType, w.Header().Get("Content-Type"), "Тип контента не совпадает с ожидаемым")
-
+			assert.Equal(t, test.want.code, w.Code, "Код ответа не совпадает с ожидаемым")
+			assert.Equal(t, test.want.contentType, w.Header().Get("Content-Type"), "Тип контента не совпадает с ожидаемым")
+		})
+	}
 }
