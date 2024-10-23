@@ -82,7 +82,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link := objects.Link{
+	link := &objects.Link{
 		Short:    generateID(),
 		Original: req.URL,
 	}
@@ -127,11 +127,11 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link := objects.Link{
+	link := &objects.Link{
 		Short:    generateID(),
 		Original: string(responseData),
 	}
-
+	fmt.Println(link)
 	if err := a.Storage.Insert(link); err != nil {
 		log.Println("Don't insert url!")
 		log.Println(err)
