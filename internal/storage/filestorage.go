@@ -65,7 +65,7 @@ func LoadFromFile(fileName string) (map[string]string, error) {
 		// Декодируем строку из формата json
 		err = json.Unmarshal(scanner.Bytes(), &d)
 		if err != nil {
-			log.Println(err)
+			zap.L().Error("error scan ", zap.Error(err))
 		}
 
 		data[d.Short] = d.Original

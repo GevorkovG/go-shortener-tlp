@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"strings"
 
-	dbmodel "github.com/GevorkovG/go-shortener-tlp/internal/DBmodel"
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
+	"github.com/GevorkovG/go-shortener-tlp/internal/dbmodel"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"go.uber.org/zap"
 
