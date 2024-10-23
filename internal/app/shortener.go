@@ -10,49 +10,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi"
 )
-
-type Link struct {
-	ID       int
-	Short    string
-	Original string
-	Store    *database.DBStore
-}
-
-func (l *Link) CreateTable() error {
-	if _, err := l.Store.DB.Exec("CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY , short CHAR (20), original CHAR (255));"); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (l *Link) Insert(link *Link) (*Link, error) {
-	if err := l.CreateTable(); err != nil {
-		return nil, err
-	}
-	if err := l.Store.DB.QueryRow(
-		"INSERT INTO links (short, original) VALUES ($1,$2) RETURNING id",
-		link.Short, link.Original,
-	).Scan(&link.ID); err != nil {
-		return nil, err
-	}
-	return link, nil
-}
-
-func (l *Link) GetOriginal(short string) (*Link, error) {
-
-	if err := l.Store.DB.QueryRow("SELECT original FROM links WHERE short = $1", short).Scan(&l.Original); err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	return l, nil
-}
 
 func generateID() string {
 	alphabet := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -146,9 +109,10 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		Short:    generateID(),
 		Original: string(responseData),
 	}
-	fmt.Println(link)
+	fmt.Println("link1: ", link)
 
 	if err = a.Storage.Insert(link); err != nil {
+		fmt.Println("------", err)
 		if errors.Is(err, storage.ErrConflict) {
 			link, err = a.Storage.GetShort(link.Original)
 			if err != nil {
@@ -163,7 +127,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
+	fmt.Println("end.. ")
 	response := fmt.Sprintf(a.cfg.ResultURL+"/%s", link.Short)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(status)

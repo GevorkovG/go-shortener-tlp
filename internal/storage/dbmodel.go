@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
@@ -34,10 +35,12 @@ func (l *Link) Insert(link *objects.Link) error {
 	if err := l.CreateTable(); err != nil {
 		return err
 	}
+	fmt.Println("here")
 	if _, err := l.Store.DB.Exec(
 		"INSERT INTO links (short, original) VALUES ($1,$2)",
 		link.Short, link.Original); err != nil {
 		var pgErr *pgconn.PgError
+		fmt.Println("*", err)
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
 				err = ErrConflict
