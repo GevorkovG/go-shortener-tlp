@@ -3,7 +3,6 @@ package app
 import (
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
-	"github.com/GevorkovG/go-shortener-tlp/internal/dbmodel"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 )
@@ -40,7 +39,7 @@ func confDB(conn string) (*database.DBStore, error) {
 func (a *App) ConfigureStorage() {
 	switch {
 	case a.cfg.DataBaseString != "":
-		a.Storage = dbmodel.NewLinkStorage(a.DataBase)
+		a.Storage = storage.NewLinkStorage(a.DataBase)
 	case a.cfg.FilePATH != "":
 		a.Storage = storage.NewFileStorage(a.cfg.FilePATH)
 	default:

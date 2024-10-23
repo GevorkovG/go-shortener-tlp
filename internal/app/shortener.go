@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
-	"github.com/GevorkovG/go-shortener-tlp/internal/dbmodel"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
+	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 	"go.uber.org/zap"
 
 	"github.com/go-chi/chi"
@@ -92,7 +92,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.Storage.Insert(link); err != nil {
-		if errors.Is(err, dbmodel.ErrConflict) {
+		if errors.Is(err, storage.ErrConflict) {
 			link, err = a.Storage.GetShort(link.Original)
 			if err != nil {
 				zap.L().Error("Don't get short URL", zap.Error(err))
@@ -149,7 +149,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(link)
 
 	if err = a.Storage.Insert(link); err != nil {
-		if errors.Is(err, dbmodel.ErrConflict) {
+		if errors.Is(err, storage.ErrConflict) {
 			link, err = a.Storage.GetShort(link.Original)
 			if err != nil {
 				zap.L().Error("Don't get short URL", zap.Error(err))
