@@ -1,4 +1,4 @@
-package log
+package logger
 
 import (
 	"net/http"
@@ -34,44 +34,33 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode // захватываем код статуса
 }
 
-// WithLogging добавляет дополнительный код для регистрации сведений о запросе
-// и возвращает новый http.Handler.
+var logger *zap.Logger
 
-func WithLogging(h http.Handler) http.Handler {
+func InitLogger() {
+	logger, _ = zap.NewDevelopment()
+}
+
+func Logger(h http.Handler) http.Handler {
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger, err := zap.NewDevelopment()
-		if err != nil {
-			// вызываем панику, если ошибка
-			panic(err)
-		}
-
-		defer func() {
-			err = logger.Sync()
-		}()
-
-		// делаем регистратор SugaredLogger
-		sugar := *logger.Sugar()
 
 		start := time.Now()
 
-		responseData := &responseData{
-			status: 0,
-			size:   0,
-		}
+		responseData := &responseData{}
+
 		lw := loggingResponseWriter{
 			ResponseWriter: w, // встраиваем оригинальный http.ResponseWriter
 			responseData:   responseData,
 		}
 		h.ServeHTTP(&lw, r) // внедряем реализацию http.ResponseWriter
 
-		duration := time.Since(start)
-
-		sugar.Infoln(
+		logger.Sugar().Infoln(
 			"uri", r.RequestURI,
 			"method", r.Method,
 			"status", responseData.status, // получаем перехваченный код статуса ответа
-			"duration", duration,
+			"duration", time.Since(start),
 			"size", responseData.size, // получаем перехваченный размер ответа
+			"loc", w.Header().Get("Location"),
 		)
 	})
 }
