@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi"
 )
 
+// Тип
 type App struct {
 	cfg     *config.AppConfig
 	Storage *storage.InMemoryStorage
