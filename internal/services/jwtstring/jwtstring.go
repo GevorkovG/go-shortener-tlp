@@ -13,8 +13,8 @@ type Claims struct {
 	UserID string
 }
 
-const Token_Exp = time.Hour * 3
-const Secret_Key = "sHoRtEnEr"
+const TokenExp = time.Hour * 3
+const SecretKey = "sHoRtEnEr"
 
 // BuildJWTString создаёт токен и возвращает его в виде строки.
 func BuildJWTString(uuid string) (string, error) {
@@ -22,14 +22,14 @@ func BuildJWTString(uuid string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			// когда создан токен
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(Token_Exp)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
 		},
 		// собственное утверждение
 		UserID: uuid,
 	})
 
 	// создаём строку токена
-	tokenString, err := token.SignedString([]byte(Secret_Key))
+	tokenString, err := token.SignedString([]byte(SecretKey))
 	if err != nil {
 		return "", err
 	}

@@ -15,7 +15,7 @@ func GetUserID(tokenString string) (string, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 			}
-			return []byte(jwtstring.Secret_Key), nil
+			return []byte(jwtstring.SecretKey), nil
 		})
 	if err != nil {
 		log.Println(err)
@@ -33,7 +33,7 @@ func ValidationToken(tokenString string) bool {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 			}
-			return []byte(jwtstring.Secret_Key), nil
+			return []byte(jwtstring.SecretKey), nil
 		})
 	if err != nil {
 		return false
