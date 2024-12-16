@@ -10,7 +10,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
+	"github.com/GevorkovG/go-shortener-tlp/internal/services/usertoken"
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 	"go.uber.org/zap"
 
@@ -93,6 +95,14 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	var status = http.StatusCreated
+	var userID string
+
+	token := r.Context().Value(cookies.ContextUserKey).(string)
+
+	userID, err := usertoken.GetUserID(token)
+	if err != nil {
+		userID = ""
+	}
 
 	responseData, err := io.ReadAll(r.Body)
 
@@ -108,6 +118,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	link := &objects.Link{
 		Short:    generateID(),
 		Original: string(responseData),
+		UserID:   userID,
 	}
 	fmt.Println("link1: ", link)
 
@@ -134,6 +145,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	_, err = io.WriteString(w, response)
 	if err != nil {
+		zap.L().Error("Didn't wrote response", zap.Error(err))
 		return
 	}
 }
