@@ -8,7 +8,7 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
-func GetUserId(tokenString string) (string, error) {
+func GetUserID(tokenString string) (string, error) {
 	claims := &jwtstring.Claims{}
 	_, err := jwt.ParseWithClaims(tokenString, claims,
 		func(t *jwt.Token) (interface{}, error) {
@@ -33,7 +33,7 @@ func ValidationToken(tokenString string) bool {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 			}
-			return []byte(jwtstring.SecretKey), nil
+			return []byte(jwtstring.SECRET_KEY), nil
 		})
 	if err != nil {
 		return false

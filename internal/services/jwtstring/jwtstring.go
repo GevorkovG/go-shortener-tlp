@@ -1,4 +1,4 @@
-package BuildJWTString
+package jwtstring
 
 import (
 	"time"
