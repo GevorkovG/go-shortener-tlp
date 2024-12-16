@@ -12,4 +12,5 @@ type Storage interface {
 	InsertLinks(links []*Link) error
 	GetOriginal(short string) (*Link, error)
 	GetShort(original string) (*Link, error)
+	GetAllByUserID(userID string) ([]Link, error)
 }

@@ -1,3 +1,5 @@
 package cookies
 
-const ContextUserKey = "token"
+type ContextKey string
+
+const ContextUserKey ContextKey = "token"

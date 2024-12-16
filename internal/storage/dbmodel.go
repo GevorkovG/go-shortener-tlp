@@ -98,3 +98,32 @@ func (l *Link) GetShort(original string) (*objects.Link, error) {
 	}
 	return &link, nil
 }
+
+func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
+
+	var links []objects.Link
+
+	rows, err := l.Store.DB.Query("SELECT original, short, userid FROM links WHERE userid = $1", userID)
+	if err != nil {
+		zap.L().Error("Don't get original URL", zap.Error(err))
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+
+		var l objects.Link
+		err := rows.Scan(&l.Original, &l.Short, &l.UserID)
+		if err != nil {
+			return nil, err
+		}
+
+		links = append(links, l)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return links, nil
+}

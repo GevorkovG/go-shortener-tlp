@@ -16,10 +16,24 @@ type FileStorage struct {
 }
 
 func NewFileStorage(path string) *FileStorage {
-	return &FileStorage{
+	fs := FileStorage{
 		memStorage: NewInMemoryStorage(),
 		filePATH:   path,
 	}
+	fs.ConfigureFileStorage()
+
+	return &fs
+}
+
+func (fs *FileStorage) ConfigureFileStorage() {
+
+	data, err := LoadFromFile(fs.filePATH)
+
+	if err != nil {
+		zap.L().Fatal("Don't load from file!", zap.Error(err))
+	}
+
+	fs.Load(data)
 }
 
 func SaveToFile(fs *objects.Link, fileName string) error {
@@ -123,4 +137,8 @@ func (fs *FileStorage) GetShort(original string) (*objects.Link, error) {
 		return link, err
 	}
 	return link, nil
+}
+
+func (fs *FileStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
+	return nil, nil
 }
