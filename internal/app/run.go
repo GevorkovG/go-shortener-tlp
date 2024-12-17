@@ -144,6 +144,7 @@ func Run() {
 	r.Get("/ping", newApp.Ping)
 	r.Post("/", newApp.GetShortURL)
 	r.Post("/api/shorten/batch", newApp.APIshortBatch)
+	r.Get("/api/user/urls", newApp.APIGetUserURLs)
 
 	log.Fatal(http.ListenAndServe(conf.Host, r))
 
