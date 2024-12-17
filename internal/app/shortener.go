@@ -44,8 +44,16 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	var req Request
 	var status = http.StatusCreated
+	var userID string
 
-	err := json.NewDecoder(r.Body).Decode(&req)
+	token := r.Context().Value(cookies.ContextUserKey).(string)
+
+	userID, err := usertoken.GetUserID(token)
+	if err != nil {
+		userID = ""
+	}
+
+	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -54,6 +62,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	link := &objects.Link{
 		Short:    generateID(),
 		Original: req.URL,
+		UserID:   userID,
 	}
 
 	if err = a.Storage.Insert(link); err != nil {

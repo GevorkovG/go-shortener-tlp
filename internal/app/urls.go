@@ -29,9 +29,9 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 		userID = ""
 	}
 
-	log.Println(userID)
-
 	userURLs, err := a.Storage.GetAllByUserID(userID)
+
+	log.Println("***", userURLs, len(userURLs), userID)
 
 	if err != nil {
 		http.Error(w, "ошибка получения урл", http.StatusNoContent)
