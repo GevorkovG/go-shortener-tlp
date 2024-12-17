@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
+	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
 	logg "github.com/GevorkovG/go-shortener-tlp/internal/log"
 	"github.com/go-chi/chi"
 )
@@ -136,6 +137,7 @@ func Run() {
 
 	r.Use(logg.Logger)
 	r.Use(gzipMiddleware)
+	r.Use(cookies.Cookies)
 
 	r.Post("/api/shorten", newApp.JSONGetShortURL)
 	r.Get("/{id}", newApp.GetOriginalURL)
