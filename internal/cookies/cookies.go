@@ -2,6 +2,7 @@ package cookies
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -31,10 +32,12 @@ func Cookies(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		token, err := r.Cookie("token")
+		fmt.Println("** ", token, err)
 
 		var cookieString string
 		if err != nil {
 			log.Println("нет куки")
+			//http.Error(w, "no cookies", http.StatusUnauthorized)
 
 			cookieString, err = createCookieString()
 
