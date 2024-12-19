@@ -118,13 +118,13 @@ func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
 		if err != nil {
 			return nil, err
 		}
-
+		log.Println("--------------------", l)
 		links = append(links, l)
 	}
 	err = rows.Err()
 	if err != nil {
 		return nil, err
 	}
-
+	log.Println("+++++++++++++++++++++++", links)
 	return links, nil
 }
