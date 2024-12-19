@@ -22,7 +22,7 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	token := r.Context().Value(cookies.ContextUserKey).(string)
 
-	log.Println(token)
+	log.Println("!!!", token)
 
 	userID, err := usertoken.GetUserID(token)
 	if err != nil {
@@ -31,15 +31,21 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	userURLs, err := a.Storage.GetAllByUserID(userID)
 
-	log.Println("***", userURLs, len(userURLs), userID)
+	log.Println("***", userURLs, len(userURLs), userID, len(userURLs) == 0, userID == "", len(userURLs) == 0 || userID == "")
 
 	if err != nil {
 		http.Error(w, "ошибка получения урл", http.StatusNoContent)
 		return
 	}
 
-	if len(userURLs) == 0 || userID == "" {
-		http.Error(w, "урл нет или юзер не найден", http.StatusNoContent)
+	if userID == "" {
+		log.Println("here2")
+		http.Error(w, "юзер не найден", http.StatusNoContent)
+		return
+	}
+	if len(userURLs) == 0 {
+		log.Println("here1")
+		http.Error(w, "урл нет", http.StatusUnauthorized)
 		return
 	}
 
