@@ -8,8 +8,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/GevorkovG/go-shortener-tlp/config"
+	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
+	"github.com/GevorkovG/go-shortener-tlp/internal/services/jwtstring"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,6 +28,14 @@ func Test_GetOriginalURL(t *testing.T) {
 
 	app := NewApp(conf)
 	app.ConfigureStorage()
+
+	userID := uuid.New().String()
+
+	cookieString, err := jwtstring.BuildJWTString(userID)
+	if err != nil {
+		log.Println("Don't create cookie string")
+	}
+
 	resultURL := "https://yandex.ru"
 
 	type want struct {
@@ -61,13 +73,15 @@ func Test_GetOriginalURL(t *testing.T) {
 
 			r := httptest.NewRequest(test.method, "http://localhost:8080/"+test.body, nil)
 
+			ctx := context.WithValue(r.Context(), cookies.ContextUserKey, cookieString)
+
 			w := httptest.NewRecorder()
 
 			router := chi.NewRouteContext()
 
 			router.URLParams.Add("id", test.body)
 
-			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, router))
+			r = r.WithContext(context.WithValue(ctx, chi.RouteCtxKey, router))
 
 			app.GetOriginalURL(w, r)
 
@@ -119,11 +133,23 @@ func Test_JSONGetShortURL(t *testing.T) {
 	app := NewApp(conf)
 	app.ConfigureStorage()
 
+	userID := uuid.New().String()
+
+	cookieString, err := jwtstring.BuildJWTString(userID)
+	if err != nil {
+		log.Println("Didn't create cookie string")
+	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			r := httptest.NewRequest(test.method, "https://localhost:8080/api/shorten", strings.NewReader(test.body))
+			ctx := context.WithValue(r.Context(), cookies.ContextUserKey, cookieString)
 
 			w := httptest.NewRecorder()
+
+			router := chi.NewRouteContext()
+
+			r = r.WithContext(context.WithValue(ctx, chi.RouteCtxKey, router))
 
 			app.JSONGetShortURL(w, r)
 
@@ -176,9 +202,22 @@ func Test_GetShortURL(t *testing.T) {
 	app := NewApp(conf)
 	app.ConfigureStorage()
 
+	userID := uuid.New().String()
+
+	cookieString, err := jwtstring.BuildJWTString(userID)
+	if err != nil {
+		log.Println("Don't create cookie string")
+	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			r := httptest.NewRequest(test.method, "https://localhost:8080", strings.NewReader(test.body))
+
+			ctx := context.WithValue(r.Context(), cookies.ContextUserKey, cookieString)
+
+			router := chi.NewRouteContext()
+
+			r = r.WithContext(context.WithValue(ctx, chi.RouteCtxKey, router))
 
 			w := httptest.NewRecorder()
 

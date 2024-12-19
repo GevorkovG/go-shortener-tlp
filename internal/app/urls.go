@@ -1,0 +1,76 @@
+package app
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"strings"
+
+	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
+	"github.com/GevorkovG/go-shortener-tlp/internal/services/usertoken"
+)
+
+type RespURLs struct {
+	Short    string `json:"short_url"`
+	Original string `json:"original_url"`
+}
+
+func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
+
+	var links []RespURLs
+
+	token := r.Context().Value(cookies.ContextUserKey).(string)
+
+	log.Println("!!!", token)
+
+	userID, err := usertoken.GetUserID(token)
+	if err != nil {
+		userID = ""
+	}
+
+	userURLs, err := a.Storage.GetAllByUserID(userID)
+
+	log.Println("***", userURLs, len(userURLs), userID, len(userURLs) == 0, userID == "", len(userURLs) == 0 || userID == "")
+
+	if err != nil {
+		http.Error(w, "ошибка получения урл", http.StatusNoContent)
+		return
+	}
+
+	if userID == "" {
+		log.Println("here2")
+		http.Error(w, "юзер не найден", http.StatusNoContent)
+		return
+	}
+	if len(userURLs) == 0 {
+		log.Println("here1")
+		http.Error(w, "урл нет", http.StatusUnauthorized)
+		return
+	}
+
+	for _, val := range userURLs {
+		resp := RespURLs{
+			Short:    strings.TrimSpace(fmt.Sprintf(a.cfg.ResultURL+"/%s", val.Short)),
+			Original: strings.TrimSpace(val.Original),
+		}
+
+		links = append(links, resp)
+		log.Println(resp)
+	}
+
+	response, err := json.Marshal(links)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	_, err = w.Write(response)
+	if err != nil {
+		return
+	}
+}

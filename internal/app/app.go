@@ -13,6 +13,10 @@ type App struct {
 	Storage  objects.Storage
 }
 
+type contextKey string
+
+const Token contextKey = "token"
+
 func NewApp(cfg *config.AppConfig) *App {
 
 	return &App{
