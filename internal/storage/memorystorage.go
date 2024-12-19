@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"log"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 )
@@ -62,5 +63,6 @@ func (s *InMemoryStorage) GetShort(original string) (*objects.Link, error) {
 }
 
 func (s *InMemoryStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
+	log.Println("2222222222222222222222222222222222222222222222222222")
 	return nil, nil
 }

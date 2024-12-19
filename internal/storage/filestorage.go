@@ -140,5 +140,6 @@ func (fs *FileStorage) GetShort(original string) (*objects.Link, error) {
 }
 
 func (fs *FileStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
+	log.Println("111111111111111111111111111111111111111111111111111111")
 	return nil, nil
 }
