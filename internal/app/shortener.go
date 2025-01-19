@@ -119,7 +119,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	link := &objects.Link{
 		Short:    generateID(),
 		Original: string(responseData),
-		UserID:   userID,
+		UserID:   userID, // Устанавливаем userID
 	}
 
 	if err = a.Storage.Insert(link); err != nil {
@@ -138,7 +138,6 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Убедимся, что строка не содержит лишних пробелов
 	response := strings.TrimSpace(fmt.Sprintf("%s/%s", a.cfg.ResultURL, link.Short))
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(status)

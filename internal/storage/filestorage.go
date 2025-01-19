@@ -92,7 +92,6 @@ func (fs *FileStorage) Load(data map[string]string) {
 }
 
 func (fs *FileStorage) Insert(link *objects.Link) error {
-
 	err := fs.memStorage.Insert(link)
 	if err != nil {
 		return err
@@ -140,6 +139,22 @@ func (fs *FileStorage) GetShort(original string) (*objects.Link, error) {
 }
 
 func (fs *FileStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
-	log.Println("111111111111111111111111111111111111111111111111111111")
-	return nil, nil
+	var userLinks []objects.Link
+
+	// Проходим по всем ссылкам в памяти и фильтруем по userID
+	for short, original := range fs.memStorage.urls {
+		// Предполагаем, что userID сохраняется при вставке
+		link := objects.Link{
+			Short:    short,
+			Original: original,
+			UserID:   userID,
+		}
+		userLinks = append(userLinks, link)
+	}
+
+	if len(userLinks) == 0 {
+		return nil, nil
+	}
+
+	return userLinks, nil
 }

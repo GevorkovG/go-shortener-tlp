@@ -15,7 +15,7 @@ type contextKey string
 
 const ContextUserKey contextKey = "userID"
 
-func Cookies(next http.Handler) http.Handler {
+func Cookies(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("token")
 		var userID string
@@ -51,6 +51,6 @@ func Cookies(next http.Handler) http.Handler {
 
 		// Добавляем userID в контекст запроса
 		ctx := context.WithValue(r.Context(), ContextUserKey, userID)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		h.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

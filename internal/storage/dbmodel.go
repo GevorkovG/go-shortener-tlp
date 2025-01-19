@@ -108,6 +108,7 @@ func (l *Link) GetShort(original string) (*objects.Link, error) {
 
 func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
 	var links []objects.Link
+
 	rows, err := l.Store.DB.Query("SELECT original, short FROM links WHERE userid = $1", userID)
 	if err != nil {
 		zap.L().Error("Failed to query user URLs", zap.String("userID", userID), zap.Error(err))
@@ -123,5 +124,6 @@ func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
 		}
 		links = append(links, link)
 	}
+
 	return links, nil
 }
