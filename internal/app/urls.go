@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
-	"github.com/GevorkovG/go-shortener-tlp/internal/services/usertoken"
 	"go.uber.org/zap"
 )
 
@@ -15,27 +14,23 @@ type RespURLs struct {
 }
 
 func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
-	// Извлекаем userID из контекста с правильным типом ключа
-	token, ok := r.Context().Value(cookies.ContextUserKey).(string)
-	if !ok {
-		zap.L().Warn("Failed to get user ID from context")
+	// Извлекаем userID из контекста
+	userID, ok := r.Context().Value(cookies.ContextUserKey).(string)
+	if !ok || userID == "" {
+		zap.L().Warn("Unauthorized access attempt")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	zap.L().Info("UserID extracted from context", zap.String("userID", userID))
 
-	userID, err := usertoken.GetUserID(token)
-	if err != nil || userID == "" {
-		zap.L().Warn("Unauthorized access attempt", zap.String("token", token))
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
+	// Получаем URL-адреса пользователя
 	userURLs, err := a.Storage.GetAllByUserID(userID)
 	if err != nil {
 		zap.L().Error("Failed to get user URLs", zap.String("userID", userID), zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	zap.L().Info("User URLs retrieved from storage", zap.String("userID", userID), zap.Any("userURLs", userURLs))
 
 	if len(userURLs) == 0 {
 		zap.L().Info("No URLs found for user", zap.String("userID", userID))
@@ -43,6 +38,7 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Формируем ответ
 	var links []RespURLs
 	for _, val := range userURLs {
 		links = append(links, RespURLs{

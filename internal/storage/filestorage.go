@@ -141,6 +141,8 @@ func (fs *FileStorage) GetShort(original string) (*objects.Link, error) {
 func (fs *FileStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
 	var userLinks []objects.Link
 
+	zap.L().Info("Querying user URLs from file storage", zap.String("userID", userID))
+
 	// Проходим по всем ссылкам в памяти и фильтруем по userID
 	for short, original := range fs.memStorage.urls {
 		// Предполагаем, что userID сохраняется при вставке
@@ -151,6 +153,8 @@ func (fs *FileStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
 		}
 		userLinks = append(userLinks, link)
 	}
+
+	zap.L().Info("User URLs retrieved from file storage", zap.String("userID", userID), zap.Any("userLinks", userLinks))
 
 	if len(userLinks) == 0 {
 		return nil, nil

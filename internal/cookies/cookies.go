@@ -29,7 +29,12 @@ func Cookies(h http.Handler) http.Handler {
 					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 					return
 				}
+				zap.L().Info("UserID extracted from token", zap.String("userID", userID))
+			} else {
+				zap.L().Warn("Invalid token provided", zap.String("token", cookie.Value))
 			}
+		} else {
+			zap.L().Info("No token found in request, creating new one")
 		}
 
 		// Если токен отсутствует или невалиден, создаем новый
@@ -47,9 +52,10 @@ func Cookies(h http.Handler) http.Handler {
 				Value: token,
 				Path:  "/",
 			})
+			zap.L().Info("New token created", zap.String("userID", userID), zap.String("token", token))
 		}
 
-		// Добавляем userID в контекст запроса
+		// Добавляем userID в контекст запроса с использованием правильного типа ключа
 		ctx := context.WithValue(r.Context(), ContextUserKey, userID)
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
