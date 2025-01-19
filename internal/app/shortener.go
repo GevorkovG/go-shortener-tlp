@@ -78,7 +78,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result := Response{
-		Result: a.cfg.ResultURL + "/" + link.Short,
+		Result: strings.TrimSpace(fmt.Sprintf("%s/%s", a.cfg.ResultURL, link.Short)),
 	}
 
 	response, err := json.Marshal(result)
@@ -138,7 +138,8 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response := fmt.Sprintf("%s/%s", a.cfg.ResultURL, link.Short)
+	// Убедимся, что строка не содержит лишних пробелов
+	response := strings.TrimSpace(fmt.Sprintf("%s/%s", a.cfg.ResultURL, link.Short))
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(status)
 
