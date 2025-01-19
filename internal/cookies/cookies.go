@@ -10,9 +10,12 @@ import (
 	"go.uber.org/zap"
 )
 
-const ContextUserKey = "userID"
+// Определяем собственный тип для ключа контекста
+type contextKey string
 
-func Cookies(h http.Handler) http.Handler {
+const ContextUserKey contextKey = "userID"
+
+func Cookies(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("token")
 		var userID string
@@ -48,6 +51,6 @@ func Cookies(h http.Handler) http.Handler {
 
 		// Добавляем userID в контекст запроса
 		ctx := context.WithValue(r.Context(), ContextUserKey, userID)
-		h.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
