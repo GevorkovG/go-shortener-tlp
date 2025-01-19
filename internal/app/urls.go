@@ -15,7 +15,13 @@ type RespURLs struct {
 }
 
 func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
-	token := r.Context().Value(cookies.ContextUserKey).(string)
+	// Извлекаем userID из контекста с правильным типом ключа
+	token, ok := r.Context().Value(cookies.ContextUserKey).(string)
+	if !ok {
+		zap.L().Warn("Failed to get user ID from context")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	userID, err := usertoken.GetUserID(token)
 	if err != nil || userID == "" {
