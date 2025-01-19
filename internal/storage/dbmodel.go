@@ -31,6 +31,7 @@ func (l *Link) CreateTable() error {
 }
 
 func (l *Link) Insert(link *objects.Link) error {
+	zap.L().Info("DB Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
 	if err := l.CreateTable(); err != nil {
 		return err
 	}
@@ -107,6 +108,7 @@ func (l *Link) GetShort(original string) (*objects.Link, error) {
 }
 
 func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
+	zap.L().Info("Getting URLs for user", zap.String("userID", userID))
 	var links []objects.Link
 
 	zap.L().Info("Querying user URLs from database", zap.String("userID", userID))

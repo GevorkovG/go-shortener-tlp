@@ -92,6 +92,8 @@ func (fs *FileStorage) Load(data map[string]string) {
 }
 
 func (fs *FileStorage) Insert(link *objects.Link) error {
+	zap.L().Info("Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
+
 	err := fs.memStorage.Insert(link)
 	if err != nil {
 		return err
@@ -139,6 +141,7 @@ func (fs *FileStorage) GetShort(original string) (*objects.Link, error) {
 }
 
 func (fs *FileStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
+	zap.L().Info("Getting URLs for user", zap.String("userID", userID))
 	var userLinks []objects.Link
 
 	zap.L().Info("Querying user URLs from file storage", zap.String("userID", userID))

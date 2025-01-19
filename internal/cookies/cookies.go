@@ -55,7 +55,7 @@ func Cookies(h http.Handler) http.Handler {
 			zap.L().Info("New token created", zap.String("userID", userID), zap.String("token", token))
 		}
 
-		// Добавляем userID в контекст запроса с использованием правильного типа ключа
+		// Добавляем userID в контекст запроса
 		ctx := context.WithValue(r.Context(), ContextUserKey, userID)
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
