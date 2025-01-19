@@ -2,8 +2,6 @@ package storage
 
 import (
 	"errors"
-	"fmt"
-	"log"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
@@ -25,7 +23,8 @@ func NewLinkStorage(db *database.DBStore) *Link {
 }
 
 func (l *Link) CreateTable() error {
-	if _, err := l.Store.DB.Exec("CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY , short CHAR (20) UNIQUE, original CHAR (255) UNIQUE);"); err != nil {
+	if _, err := l.Store.DB.Exec("CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY, short CHAR(20) UNIQUE, original CHAR(255) UNIQUE, userid CHAR(36));"); err != nil {
+		zap.L().Error("Failed to create table", zap.Error(err))
 		return err
 	}
 	return nil
@@ -36,15 +35,16 @@ func (l *Link) Insert(link *objects.Link) error {
 		return err
 	}
 	if _, err := l.Store.DB.Exec(
-		"INSERT INTO links (short, original) VALUES ($1,$2)",
-		link.Short, link.Original); err != nil {
+		"INSERT INTO links (short, original, userid) VALUES ($1, $2, $3)",
+		link.Short, link.Original, link.UserID); err != nil {
 		var pgErr *pgconn.PgError
-		fmt.Println("*", err)
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				err = ErrConflict
+				zap.L().Warn("Conflict on inserting new record", zap.String("short", link.Short), zap.String("original", link.Original))
+				return ErrConflict
 			}
 		}
+		zap.L().Error("Failed to insert link", zap.Error(err))
 		return err
 	}
 	return nil
@@ -54,77 +54,74 @@ func (l *Link) InsertLinks(links []*objects.Link) error {
 	if err := l.CreateTable(); err != nil {
 		return err
 	}
+
 	tx, err := l.Store.DB.Begin()
 	if err != nil {
+		zap.L().Error("Failed to begin transaction", zap.Error(err))
 		return err
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare(
-		"INSERT INTO links (short, original) VALUES($1,$2)")
+	stmt, err := tx.Prepare("INSERT INTO links (short, original, userid) VALUES ($1, $2, $3)")
 	if err != nil {
+		zap.L().Error("Failed to prepare statement", zap.Error(err))
 		return err
 	}
 	defer stmt.Close()
 
-	for _, v := range links {
-		_, err := stmt.Exec(v.Short, v.Original)
-		if err != nil {
+	for _, link := range links {
+		if _, err := stmt.Exec(link.Short, link.Original, link.UserID); err != nil {
+			zap.L().Error("Failed to insert link", zap.String("short", link.Short), zap.String("original", link.Original), zap.Error(err))
 			return err
 		}
 	}
-	return tx.Commit()
+
+	if err := tx.Commit(); err != nil {
+		zap.L().Error("Failed to commit transaction", zap.Error(err))
+		return err
+	}
+
+	return nil
 }
 
 func (l *Link) GetOriginal(short string) (*objects.Link, error) {
-
 	link := &objects.Link{
 		Short: short,
 	}
 	if err := l.Store.DB.QueryRow("SELECT original FROM links WHERE short = $1", link.Short).Scan(&link.Original); err != nil {
-		zap.L().Error("Don't get original URL", zap.Error(err))
-		return link, err
+		zap.L().Error("Failed to get original URL", zap.String("short", short), zap.Error(err))
+		return nil, err
 	}
 	return link, nil
 }
 
 func (l *Link) GetShort(original string) (*objects.Link, error) {
-
-	link := objects.Link{
+	link := &objects.Link{
 		Original: original,
 	}
 	if err := l.Store.DB.QueryRow("SELECT short FROM links WHERE original = $1", link.Original).Scan(&link.Short); err != nil {
-		zap.L().Error("Don't get short URL", zap.Error(err))
-		return &link, err
+		zap.L().Error("Failed to get short URL", zap.String("original", original), zap.Error(err))
+		return nil, err
 	}
-	return &link, nil
+	return link, nil
 }
 
 func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
-
 	var links []objects.Link
-	log.Println("000000000000000000000000000000000000000000000000")
-	rows, err := l.Store.DB.Query("SELECT original, short, userid FROM links WHERE userid = $1", userID)
+	rows, err := l.Store.DB.Query("SELECT original, short FROM links WHERE userid = $1", userID)
 	if err != nil {
-		zap.L().Error("Don't get original URL", zap.Error(err))
+		zap.L().Error("Failed to query user URLs", zap.String("userID", userID), zap.Error(err))
 		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-
-		var l objects.Link
-		err := rows.Scan(&l.Original, &l.Short, &l.UserID)
-		if err != nil {
+		var link objects.Link
+		if err := rows.Scan(&link.Original, &link.Short); err != nil {
+			zap.L().Error("Failed to scan row", zap.Error(err))
 			return nil, err
 		}
-		log.Println("--------------------", l)
-		links = append(links, l)
+		links = append(links, link)
 	}
-	err = rows.Err()
-	if err != nil {
-		return nil, err
-	}
-	log.Println("+++++++++++++++++++++++", links)
 	return links, nil
 }

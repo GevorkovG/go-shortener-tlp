@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -41,19 +40,16 @@ type Response struct {
 }
 
 func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
-
 	var req Request
 	var status = http.StatusCreated
 	var userID string
 
-	token := r.Context().Value(cookies.ContextUserKey).(string)
-
-	userID, err := usertoken.GetUserID(token)
-	if err != nil {
-		userID = ""
+	token := r.Context().Value(cookies.ContextUserKey)
+	if token != nil {
+		userID, _ = usertoken.GetUserID(token.(string))
 	}
 
-	err = json.NewDecoder(r.Body).Decode(&req)
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -69,13 +65,13 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, storage.ErrConflict) {
 			link, err = a.Storage.GetShort(link.Original)
 			if err != nil {
-				zap.L().Error("Don't get short URL", zap.Error(err))
+				zap.L().Error("Failed to get short URL", zap.Error(err))
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			status = http.StatusConflict
 		} else {
-			zap.L().Error("Don't insert URL", zap.Error(err))
+			zap.L().Error("Failed to insert URL", zap.Error(err))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -96,25 +92,21 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	_, err = w.Write(response)
 	if err != nil {
+		zap.L().Error("Failed to write response", zap.Error(err))
 		return
 	}
-
 }
 
 func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
-
 	var status = http.StatusCreated
 	var userID string
 
-	token := r.Context().Value(cookies.ContextUserKey).(string)
-
-	userID, err := usertoken.GetUserID(token)
-	if err != nil {
-		userID = ""
+	token := r.Context().Value(cookies.ContextUserKey)
+	if token != nil {
+		userID, _ = usertoken.GetUserID(token.(string))
 	}
 
 	responseData, err := io.ReadAll(r.Body)
-
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read request body: %s", err), http.StatusBadRequest)
 		return
@@ -129,10 +121,8 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		Original: string(responseData),
 		UserID:   userID,
 	}
-	fmt.Println("link1: ", link)
 
 	if err = a.Storage.Insert(link); err != nil {
-		fmt.Println("------", err)
 		if errors.Is(err, storage.ErrConflict) {
 			link, err = a.Storage.GetShort(link.Original)
 			if err != nil {
@@ -147,27 +137,24 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	fmt.Println("end.. ")
-	response := strings.TrimSpace(fmt.Sprintf(a.cfg.ResultURL+"/%s", link.Short))
+
+	response := fmt.Sprintf("%s/%s\n", a.cfg.ResultURL, link.Short)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(status)
 
 	_, err = io.WriteString(w, response)
 	if err != nil {
-		zap.L().Error("Didn't wrote response", zap.Error(err))
+		zap.L().Error("Didn't write response", zap.Error(err))
 		return
 	}
 }
 
 func (a *App) GetOriginalURL(w http.ResponseWriter, r *http.Request) {
-
 	id := chi.URLParam(r, "id")
 
 	link, err := a.Storage.GetOriginal(id)
-
 	if err != nil {
-		log.Println("Don't read data from table")
-		log.Println(err)
+		zap.L().Error("Failed to get original URL", zap.String("id", id), zap.Error(err))
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}

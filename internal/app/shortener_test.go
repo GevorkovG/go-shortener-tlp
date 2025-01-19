@@ -23,7 +23,7 @@ func Test_GetOriginalURL(t *testing.T) {
 	conf := &config.AppConfig{
 		Host:      "localhost:8080",
 		ResultURL: "http://localhost:8080",
-		//FilePATH:  "/tmp/short-url-db.json",
+		// FilePATH: "/tmp/short-url-db.json",
 	}
 
 	app := NewApp(conf)
@@ -196,7 +196,7 @@ func Test_GetShortURL(t *testing.T) {
 	conf := &config.AppConfig{
 		Host:      "localhost:8080",
 		ResultURL: "http://localhost:8080",
-		//FilePATH:  "/tmp/short-url-db.json",
+		// FilePATH: "/tmp/short-url-db.json",
 	}
 
 	app := NewApp(conf)
