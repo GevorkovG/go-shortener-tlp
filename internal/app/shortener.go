@@ -138,7 +138,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response := fmt.Sprintf("%s/%s\n", a.cfg.ResultURL, link.Short)
+	response := fmt.Sprintf("%s/%s", a.cfg.ResultURL, link.Short)
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(status)
 
