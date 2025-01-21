@@ -97,10 +97,13 @@ func (fs *FileStorage) Insert(link *objects.Link) error {
 	if err != nil {
 		return err
 	}
+
 	err2 := SaveToFile(link, fs.filePATH)
 	if err2 != nil {
 		return err2
 	}
+
+	zap.L().Info("FILE URL inserted successfully", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
 	return nil
 }
 

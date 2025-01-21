@@ -32,9 +32,11 @@ func (l *Link) CreateTable() error {
 
 func (l *Link) Insert(link *objects.Link) error {
 	zap.L().Info("DB Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
+
 	if err := l.CreateTable(); err != nil {
 		return err
 	}
+
 	if _, err := l.Store.DB.Exec(
 		"INSERT INTO links (short, original, userid) VALUES ($1, $2, $3)",
 		link.Short, link.Original, link.UserID); err != nil {
@@ -48,6 +50,8 @@ func (l *Link) Insert(link *objects.Link) error {
 		zap.L().Error("Failed to insert link", zap.Error(err))
 		return err
 	}
+
+	zap.L().Info("DB URL inserted successfully", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
 	return nil
 }
 

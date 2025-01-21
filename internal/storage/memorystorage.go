@@ -31,10 +31,14 @@ func (s *InMemoryStorage) Insert(link *objects.Link) error {
 }
 
 func (s *InMemoryStorage) InsertLinks(links []*objects.Link) error {
+	zap.L().Info("MEMORY Inserting multiple URLs", zap.Any("links", links))
+
 	for _, link := range links {
 		s.urls[link.Short] = link.Original
 		s.userIDs[link.Short] = link.UserID
 	}
+
+	zap.L().Info("MEMORY URLs inserted successfully", zap.Any("links", links))
 	return nil
 }
 

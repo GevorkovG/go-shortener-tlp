@@ -44,25 +44,30 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	var status = http.StatusCreated
 	var userID string
 
+	// Извлекаем userID из контекста
 	token := r.Context().Value(cookies.ContextUserKey)
 	if token != nil {
 		userID, _ = usertoken.GetUserID(token.(string))
 	}
 
+	// Декодируем тело запроса
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	// Создаем объект Link
 	link := &objects.Link{
 		Short:    generateID(),
 		Original: req.URL,
-		UserID:   userID,
+		UserID:   userID, // Устанавливаем userID
 	}
 
+	// Сохраняем ссылку в хранилище
 	if err = a.Storage.Insert(link); err != nil {
 		if errors.Is(err, storage.ErrConflict) {
+			// Если URL уже существует, получаем существующий короткий URL
 			link, err = a.Storage.GetShort(link.Original)
 			if err != nil {
 				zap.L().Error("Failed to get short URL", zap.Error(err))
@@ -77,6 +82,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Формируем ответ
 	result := Response{
 		Result: strings.TrimSpace(fmt.Sprintf("%s/%s", a.cfg.ResultURL, link.Short)),
 	}
