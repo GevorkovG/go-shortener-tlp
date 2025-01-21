@@ -18,7 +18,7 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(cookies.ContextUserKey).(string)
 	if !ok || userID == "" {
 		zap.L().Warn("Unauthorized access attempt")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	zap.L().Info("UserID extracted from context", zap.String("userID", userID))
@@ -27,7 +27,7 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	userURLs, err := a.Storage.GetAllByUserID(userID)
 	if err != nil {
 		zap.L().Error("Failed to get user URLs", zap.String("userID", userID), zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	zap.L().Info("User URLs retrieved from storage", zap.String("userID", userID), zap.Any("userURLs", userURLs))
@@ -50,7 +50,7 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	response, err := json.Marshal(links)
 	if err != nil {
 		zap.L().Error("Failed to marshal user URLs", zap.String("userID", userID), zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
