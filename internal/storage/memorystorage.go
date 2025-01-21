@@ -24,7 +24,7 @@ func (s *InMemoryStorage) Load(data map[string]string) {
 }
 
 func (s *InMemoryStorage) Insert(link *objects.Link) error {
-	zap.L().Info("Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
+	zap.L().Info("MEMORY Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
 	s.urls[link.Short] = link.Original
 	s.userIDs[link.Short] = link.UserID // Сохраняем userID
 	return nil

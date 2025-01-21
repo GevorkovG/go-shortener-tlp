@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -33,7 +32,7 @@ func Test_GetOriginalURL(t *testing.T) {
 
 	cookieString, err := jwtstring.BuildJWTString(userID)
 	if err != nil {
-		log.Println("Don't create cookie string")
+		t.Log("Didn't create cookie string")
 	}
 
 	resultURL := "https://yandex.ru"
@@ -68,7 +67,7 @@ func Test_GetOriginalURL(t *testing.T) {
 			}
 
 			if err := app.Storage.Insert(link); err != nil {
-				log.Println(err)
+				t.Log(err)
 			}
 
 			r := httptest.NewRequest(test.method, "http://localhost:8080/"+test.body, nil)
@@ -137,7 +136,7 @@ func Test_JSONGetShortURL(t *testing.T) {
 
 	cookieString, err := jwtstring.BuildJWTString(userID)
 	if err != nil {
-		log.Println("Didn't create cookie string")
+		t.Log("Didn't create cookie string")
 	}
 
 	for _, test := range tests {
@@ -206,7 +205,7 @@ func Test_GetShortURL(t *testing.T) {
 
 	cookieString, err := jwtstring.BuildJWTString(userID)
 	if err != nil {
-		log.Println("Don't create cookie string")
+		t.Log("Didn't create cookie string")
 	}
 
 	for _, test := range tests {

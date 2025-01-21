@@ -3,7 +3,6 @@ package storage
 import (
 	"bufio"
 	"encoding/json"
-	"log"
 	"os"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
@@ -92,7 +91,7 @@ func (fs *FileStorage) Load(data map[string]string) {
 }
 
 func (fs *FileStorage) Insert(link *objects.Link) error {
-	zap.L().Info("Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
+	zap.L().Info("FILE Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
 
 	err := fs.memStorage.Insert(link)
 	if err != nil {
@@ -119,13 +118,14 @@ func (fs *FileStorage) InsertLinks(links []*objects.Link) error {
 }
 
 func (fs *FileStorage) GetOriginal(short string) (*objects.Link, error) {
-
 	link, err := fs.memStorage.GetOriginal(short)
-
 	if err != nil {
-		log.Println("")
-		return link, err
+		zap.L().Error("Failed to get original URL", zap.String("short", short), zap.Error(err))
+		return nil, err
 	}
+
+	// Логируем успешное получение оригинального URL
+	zap.L().Info("Successfully retrieved original URL", zap.String("short", short), zap.String("original", link.Original))
 	return link, nil
 }
 

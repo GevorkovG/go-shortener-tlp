@@ -63,7 +63,7 @@ func (a *App) APIshortBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := a.Storage.InsertLinks(links); err != nil {
-		log.Println("Didn't insert to table")
+		//		log.Println("Didn't insert to table")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
