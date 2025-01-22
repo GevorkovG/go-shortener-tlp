@@ -19,7 +19,7 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	if !ok || userID == "" {
 		zap.L().Warn("Unauthorized access attempt")
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized) // Устанавиваем статус-код
 		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 		return
 	}
@@ -30,7 +30,7 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		zap.L().Error("Failed to get user URLs", zap.String("userID", userID), zap.Error(err))
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError) // Устанавиваем статус-код
 		json.NewEncoder(w).Encode(map[string]string{"error": "Internal Server Error"})
 		return
 	}
