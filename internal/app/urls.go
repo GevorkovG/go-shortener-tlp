@@ -17,7 +17,7 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	// Извлекаем userID из контекста
 	userID, ok := r.Context().Value(cookies.ContextUserKey).(string)
 	if !ok || userID == "" {
-		zap.L().Warn("Unauthorized access attempt")
+		//zap.L().Warn("Unauthorized access attempt")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized) // Устанавиваем статус-код
 		json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
@@ -35,6 +35,8 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	zap.L().Info("User URLs retrieved from storage", zap.String("userID", userID), zap.Any("userURLs", userURLs))
+	// Логируем количество найденных URL
+	zap.L().Info("Number of URLs found", zap.Int("count", len(userURLs)))
 
 	if len(userURLs) == 0 {
 		zap.L().Info("No URLs found for user", zap.String("userID", userID))

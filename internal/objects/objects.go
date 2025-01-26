@@ -1,7 +1,7 @@
 package objects
 
 type Link struct {
-	ID       int    `json:"-"`
+	//ID       int    `json:"-"`
 	Short    string `json:"short_url"`
 	Original string `json:"original_url"`
 	UserID   string `json:"-"`
