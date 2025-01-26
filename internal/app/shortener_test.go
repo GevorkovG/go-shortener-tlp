@@ -271,7 +271,7 @@ func TestAPIGetUserURLs(t *testing.T) {
 
 	// Создаем тестовый запрос
 	req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
-	ctx := context.WithValue(req.Context(), cookies.ContextUserKey, cookieString)
+	ctx := context.WithValue(req.Context(), cookies.ContextUserKey, userID)
 	req = req.WithContext(ctx)
 
 	// Логируем userID из контекста
