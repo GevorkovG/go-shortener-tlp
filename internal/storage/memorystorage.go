@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"log"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"go.uber.org/zap"
@@ -44,6 +45,8 @@ func (s *InMemoryStorage) InsertLinks(links []*objects.Link) error {
 
 func (s *InMemoryStorage) GetOriginal(short string) (*objects.Link, error) {
 	original, exists := s.urls[short]
+	//DEBUG--------------------------------------------------------------------------------------------------
+	log.Printf("--------------internal/storage/memorystorage.go GetOriginal SHORT %s ORIGIN %s", s.urls[short], original)
 	if !exists {
 		return nil, errors.New("short URL not found")
 	}
@@ -56,6 +59,8 @@ func (s *InMemoryStorage) GetOriginal(short string) (*objects.Link, error) {
 
 func (s *InMemoryStorage) GetShort(original string) (*objects.Link, error) {
 	for short, orig := range s.urls {
+		//DEBUG--------------------------------------------------------------------------------------------------
+		log.Printf("--------------internal/storage/memorystorage.go GetShort userID %s SHORT %s ORIGIN %s", s.userIDs[short], short, original)
 		if orig == original {
 			return &objects.Link{
 				Short:    short,
@@ -69,6 +74,8 @@ func (s *InMemoryStorage) GetShort(original string) (*objects.Link, error) {
 
 func (s *InMemoryStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
 	zap.L().Info("Getting URLs for user", zap.String("userID", userID))
+	//DEBUG--------------------------------------------------------------------------------------------------
+	log.Printf("internal/storage/memorystorage.go GetAllByUserID userID %s", userID)
 
 	var userLinks []objects.Link
 

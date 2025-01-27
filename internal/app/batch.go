@@ -37,6 +37,9 @@ func (a *App) APIshortBatch(w http.ResponseWriter, r *http.Request) {
 		userID = ""
 	}
 
+	//DEBUG--------------------------------------------------------------------------------------------------
+	log.Printf("BATCH userID %s token %s", userID, token)
+
 	err = json.NewDecoder(r.Body).Decode(&originals)
 	if err != nil {
 		log.Println("didn't decode body")

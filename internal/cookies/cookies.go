@@ -2,6 +2,7 @@ package cookies
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/services/jwtstring"
@@ -29,8 +30,16 @@ func Cookies(h http.Handler) http.Handler {
 					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 					return
 				}
+				zap.L().Info("UserID extracted from token", zap.String("userID", userID))
+			} else {
+				zap.L().Warn("Invalid token provided", zap.String("token", cookie.Value))
 			}
+		} else {
+			zap.L().Info("No token found in request, creating new one")
 		}
+
+		//DEBUG--------------------------------------------------------------------------------------------------
+		log.Printf("internal/cookies/cookies.go userID %s BEFORE if userID == nil", userID)
 
 		// Если токен отсутствует или невалиден, создаем новый
 		if userID == "" {
@@ -41,12 +50,15 @@ func Cookies(h http.Handler) http.Handler {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
+			//DEBUG--------------------------------------------------------------------------------------------------
+			log.Printf("internal/cookies/cookies.go userID %s token %s", userID, token)
 
 			http.SetCookie(w, &http.Cookie{
 				Name:  "token",
 				Value: token,
 				Path:  "/",
 			})
+			zap.L().Info("New token created", zap.String("userID", userID), zap.String("token", token))
 		}
 
 		// Добавляем userID в контекст запроса

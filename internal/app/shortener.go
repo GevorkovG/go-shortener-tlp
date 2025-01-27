@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -107,10 +108,14 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	var status = http.StatusCreated
 	var userID string
 
+	// Извлекаем userID из контекста
 	token := r.Context().Value(cookies.ContextUserKey)
 	if token != nil {
 		userID, _ = usertoken.GetUserID(token.(string))
 	}
+
+	//DEBUG--------------------------------------------------------------------------------------------------
+	log.Printf("GETshort userID %s token %s", userID, token)
 
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
