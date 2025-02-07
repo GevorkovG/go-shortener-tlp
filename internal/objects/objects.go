@@ -1,10 +1,10 @@
 package objects
 
 type Link struct {
-	//ID       int    `json:"-"`
-	Short    string `json:"short_url"`
-	Original string `json:"original_url"`
-	UserID   string `json:"-"`
+	Short       string `json:"short_url"`
+	Original    string `json:"original_url"`
+	UserID      string `json:"-"`
+	DeletedFlag bool   `json:"-"`
 }
 
 type Storage interface {
@@ -13,4 +13,5 @@ type Storage interface {
 	GetOriginal(short string) (*Link, error)
 	GetShort(original string) (*Link, error)
 	GetAllByUserID(userID string) ([]Link, error)
+	MarkAsDeleted(userID string, shortURLs []string) error
 }

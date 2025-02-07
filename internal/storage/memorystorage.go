@@ -104,3 +104,13 @@ func (s *InMemoryStorage) GetAllByUserID(userID string) ([]objects.Link, error) 
 
 	return userLinks, nil
 }
+
+func (s *InMemoryStorage) MarkAsDeleted(userID string, shortURLs []string) error {
+	for _, short := range shortURLs {
+		if s.userIDs[short] == userID {
+			delete(s.urls, short)
+			delete(s.userIDs, short)
+		}
+	}
+	return nil
+}

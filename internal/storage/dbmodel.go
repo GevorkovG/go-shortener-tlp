@@ -23,7 +23,7 @@ func NewLinkStorage(db *database.DBStore) *Link {
 }
 
 func (l *Link) CreateTable() error {
-	if _, err := l.Store.DB.Exec("CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY, short CHAR(20) UNIQUE, original CHAR(255) UNIQUE, userid CHAR(36));"); err != nil {
+	if _, err := l.Store.DB.Exec("CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY, short CHAR(20) UNIQUE, original CHAR(255) UNIQUE, userid CHAR(36), is_deleted BOOLEAN DEFAULT FALSE);"); err != nil {
 		zap.L().Error("Failed to create table", zap.Error(err))
 		return err
 	}
@@ -136,4 +136,26 @@ func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
 	zap.L().Info("User URLs retrieved from database", zap.String("userID", userID), zap.Any("links", links))
 
 	return links, nil
+}
+
+func (l *Link) MarkAsDeleted(userID string, shortURLs []string) error {
+	tx, err := l.Store.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare("UPDATE links SET is_deleted = TRUE WHERE short = $1 AND userid = $2")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, short := range shortURLs {
+		if _, err := stmt.Exec(short, userID); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }

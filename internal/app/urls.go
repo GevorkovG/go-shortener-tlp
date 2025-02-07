@@ -68,3 +68,30 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 		zap.L().Error("Failed to write response", zap.Error(err))
 	}
 }
+
+func (a *App) APIDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
+	var shortURLs []string
+	userID, ok := r.Context().Value(cookies.SecretKey).(string)
+
+	if !ok || userID == "" {
+		zap.L().Warn("Unauthorized access attempt")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&shortURLs)
+	if err != nil {
+		zap.L().Error("Failed to decode request body", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	go func() {
+		if err := a.Storage.MarkAsDeleted(userID, shortURLs); err != nil {
+			zap.L().Error("Failed to mark URLs as deleted", zap.Error(err))
+		}
+	}()
+
+	w.WriteHeader(http.StatusAccepted)
+
+}

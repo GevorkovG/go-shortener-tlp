@@ -153,6 +153,7 @@ func Run() {
 	r.Post("/", newApp.GetShortURL)
 	r.Post("/api/shorten/batch", newApp.APIshortBatch)
 	r.Get("/api/user/urls", newApp.APIGetUserURLs)
+	r.Delete("/api/user/urls", newApp.APIDeleteUserURLs)
 
 	log.Fatal(http.ListenAndServe(conf.Host, r))
 }
