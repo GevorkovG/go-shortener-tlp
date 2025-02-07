@@ -17,19 +17,19 @@ type Claims struct {
 }
 
 const (
-	TOKEN_EXP             = time.Hour * 3
-	SECRET_KEY contextKey = "supersecretkey"
+	Token_Exp             = time.Hour * 3
+	Secret_Key contextKey = "supersecretkey"
 )
 
 func BuildJWTString(userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TOKEN_EXP)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(Token_Exp)),
 		},
 		UserID: userID,
 	})
 
-	tokenString, err := token.SignedString([]byte(SECRET_KEY))
+	tokenString, err := token.SignedString([]byte(Secret_Key))
 	if err != nil {
 		return "", err
 	}
@@ -40,7 +40,7 @@ func BuildJWTString(userID string) (string, error) {
 func GetUserID(tokenString string) (string, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
-		return []byte(SECRET_KEY), nil
+		return []byte(Secret_Key), nil
 	})
 	if err != nil || !token.Valid {
 		return "", err
@@ -79,7 +79,7 @@ func Cookies(h http.Handler) http.Handler {
 			//log.Printf("New UserID: %s, Token: %s", userID, tokenString)
 		}
 
-		ctx := context.WithValue(r.Context(), SECRET_KEY, userID)
+		ctx := context.WithValue(r.Context(), Secret_Key, userID)
 		h.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

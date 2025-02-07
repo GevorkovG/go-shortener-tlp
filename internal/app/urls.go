@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
 	"go.uber.org/zap"
@@ -16,7 +17,7 @@ type RespURLs struct {
 
 func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	// Извлекаем userID из контекста
-	userID, ok := r.Context().Value(cookies.SECRET_KEY).(string)
+	userID, ok := r.Context().Value(cookies.Secret_Key).(string)
 
 	//DEBUG--------------------------------------------------------------------------------------------------
 	log.Printf("internal/app/urls.go  APIGetUserURLs %t userID %s", userID == "", userID)
@@ -56,8 +57,8 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	var links []RespURLs
 	for _, val := range userURLs {
 		links = append(links, RespURLs{
-			Short:    a.cfg.ResultURL + "/" + val.Short,
-			Original: val.Original,
+			Short:    strings.TrimSpace(a.cfg.ResultURL + "/" + val.Short),
+			Original: strings.TrimSpace(val.Original),
 		})
 	}
 
