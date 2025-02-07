@@ -26,8 +26,13 @@ func (s *InMemoryStorage) Load(data map[string]string) {
 
 func (s *InMemoryStorage) Insert(link *objects.Link) error {
 	zap.L().Info("Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
+
 	s.urls[link.Short] = link.Original
 	s.userIDs[link.Short] = link.UserID
+
+	//DEBUG--------------------------------------------------------------------------------------------------
+	log.Printf("internal/storage/memorystorage.go Insert Original:%s UserID:%s", link.Original, link.UserID)
+
 	return nil
 }
 
@@ -46,7 +51,8 @@ func (s *InMemoryStorage) InsertLinks(links []*objects.Link) error {
 func (s *InMemoryStorage) GetOriginal(short string) (*objects.Link, error) {
 	original, exists := s.urls[short]
 	//DEBUG--------------------------------------------------------------------------------------------------
-	log.Printf("--------------internal/storage/memorystorage.go GetOriginal SHORT %s ORIGIN %s", s.urls[short], original)
+	log.Printf("internal/storage/memorystorage.go GetOriginal Original:%s Short:%s UserID:%s", original, s.urls[short], s.userIDs[short])
+
 	if !exists {
 		return nil, errors.New("short URL not found")
 	}

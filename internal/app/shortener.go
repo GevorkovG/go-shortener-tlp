@@ -43,12 +43,12 @@ type Response struct {
 func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	var req Request
 	var status = http.StatusCreated
-	var userID string
+	var UserID string
 
-	// Извлекаем userID из контекста
-	token := r.Context().Value(cookies.ContextUserKey)
+	// Извлекаем UserID из контекста
+	token := r.Context().Value(cookies.SECRET_KEY)
 	if token != nil {
-		userID, _ = usertoken.GetUserID(token.(string))
+		UserID, _ = usertoken.GetUserID(token.(string))
 	}
 
 	// Декодируем тело запроса
@@ -62,7 +62,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	link := &objects.Link{
 		Short:    generateID(),
 		Original: req.URL,
-		UserID:   userID, // Устанавливаем userID
+		UserID:   UserID, // Устанавливаем UserID
 	}
 
 	// Сохраняем ссылку в хранилище
@@ -106,16 +106,17 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	var status = http.StatusCreated
-	var userID string
 
-	// Извлекаем userID из контекста
-	token := r.Context().Value(cookies.ContextUserKey)
-	if token != nil {
-		userID, _ = usertoken.GetUserID(token.(string))
+	// Извлекаем UserID из контекста
+	userID, ok := r.Context().Value(cookies.SECRET_KEY).(string)
+	if !ok || userID == "" {
+		// Если UserID не найден в контексте, логируем ошибку и продолжаем без него
+		zap.L().Error("UserID not found in context")
+		userID = "" // Устанавливаем пустой UserID
 	}
 
 	//DEBUG--------------------------------------------------------------------------------------------------
-	log.Printf("GETshort userID %s token %s", userID, token)
+	log.Printf("internal/app/shortener.go  UserID: %s ", userID)
 
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -130,8 +131,11 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	link := &objects.Link{
 		Short:    generateID(),
 		Original: string(responseData),
-		UserID:   userID, // Устанавливаем userID
+		UserID:   userID, // Устанавливаем UserID
 	}
+
+	//DEBUG--------------------------------------------------------------------------------------------------
+	log.Printf("internal/app/shortener.go GetShortURL Original:%s UserID:%s Short: %s", link.Original, link.UserID, link.Short)
 
 	if err = a.Storage.Insert(link); err != nil {
 		if errors.Is(err, storage.ErrConflict) {

@@ -1,6 +1,8 @@
 package app
 
 import (
+	"log"
+
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
@@ -43,10 +45,22 @@ func confDB(conn string) (*database.DBStore, error) {
 func (a *App) ConfigureStorage() {
 	switch {
 	case a.cfg.DataBaseString != "":
+
+		//DEBUG--------------------------------------------------------------------------------------------------
+		log.Printf("internal/app/app.go ValidationToken USE DataBase ")
+
 		a.Storage = storage.NewLinkStorage(a.DataBase)
 	case a.cfg.FilePATH != "":
+
+		//DEBUG--------------------------------------------------------------------------------------------------
+		log.Printf("internal/app/app.go ValidationToken USE FilePATH ")
+
 		a.Storage = storage.NewFileStorage(a.cfg.FilePATH)
 	default:
+
+		//DEBUG--------------------------------------------------------------------------------------------------
+		log.Printf("internal/app/app.go ValidationToken USE NewInMemoryStorage ")
+
 		a.Storage = storage.NewInMemoryStorage()
 	}
 }

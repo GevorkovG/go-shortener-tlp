@@ -30,7 +30,7 @@ func (a *App) APIshortBatch(w http.ResponseWriter, r *http.Request) {
 		userID    string
 	)
 
-	token := r.Context().Value(cookies.ContextUserKey).(string)
+	token := r.Context().Value(cookies.SECRET_KEY).(string)
 
 	userID, err := usertoken.GetUserID(token)
 	if err != nil {

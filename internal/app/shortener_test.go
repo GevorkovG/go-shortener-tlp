@@ -74,7 +74,7 @@ func Test_GetOriginalURL(t *testing.T) {
 
 			r := httptest.NewRequest(test.method, "http://localhost:8080/"+test.body, nil)
 
-			ctx := context.WithValue(r.Context(), cookies.ContextUserKey, cookieString)
+			ctx := context.WithValue(r.Context(), cookies.SECRET_KEY, cookieString)
 
 			w := httptest.NewRecorder()
 
@@ -144,7 +144,7 @@ func Test_JSONGetShortURL(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			r := httptest.NewRequest(test.method, "https://localhost:8080/api/shorten", strings.NewReader(test.body))
-			ctx := context.WithValue(r.Context(), cookies.ContextUserKey, cookieString)
+			ctx := context.WithValue(r.Context(), cookies.SECRET_KEY, cookieString)
 
 			w := httptest.NewRecorder()
 
@@ -214,7 +214,7 @@ func Test_GetShortURL(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			r := httptest.NewRequest(test.method, "https://localhost:8080", strings.NewReader(test.body))
 
-			ctx := context.WithValue(r.Context(), cookies.ContextUserKey, cookieString)
+			ctx := context.WithValue(r.Context(), cookies.SECRET_KEY, cookieString)
 
 			router := chi.NewRouteContext()
 
@@ -271,11 +271,11 @@ func TestAPIGetUserURLs(t *testing.T) {
 
 	// Создаем тестовый запрос
 	req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
-	ctx := context.WithValue(req.Context(), cookies.ContextUserKey, userID)
+	ctx := context.WithValue(req.Context(), cookies.SECRET_KEY, userID)
 	req = req.WithContext(ctx)
 
 	// Логируем userID из контекста
-	userIDFromContext, ok := req.Context().Value(cookies.ContextUserKey).(string)
+	userIDFromContext, ok := req.Context().Value(cookies.SECRET_KEY).(string)
 	if !ok {
 		t.Fatal("Failed to get userID from context")
 	}
