@@ -46,7 +46,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	var UserID string
 
 	// Извлекаем UserID из контекста
-	token := r.Context().Value(cookies.Secret_Key)
+	token := r.Context().Value(cookies.SecretKey)
 	if token != nil {
 		UserID, _ = usertoken.GetUserID(token.(string))
 	}
@@ -108,7 +108,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	var status = http.StatusCreated
 
 	// Извлекаем UserID из контекста
-	userID, ok := r.Context().Value(cookies.Secret_Key).(string)
+	userID, ok := r.Context().Value(cookies.SecretKey).(string)
 	if !ok || userID == "" {
 		// Если UserID не найден в контексте, логируем ошибку и продолжаем без него
 		zap.L().Error("UserID not found in context")

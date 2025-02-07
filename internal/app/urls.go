@@ -17,7 +17,7 @@ type RespURLs struct {
 
 func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	// Извлекаем userID из контекста
-	userID, ok := r.Context().Value(cookies.Secret_Key).(string)
+	userID, ok := r.Context().Value(cookies.SecretKey).(string)
 
 	//DEBUG--------------------------------------------------------------------------------------------------
 	log.Printf("internal/app/urls.go  APIGetUserURLs %t userID %s", userID == "", userID)
