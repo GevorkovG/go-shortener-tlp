@@ -174,7 +174,8 @@ func (a *App) GetOriginalURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if link.DeletedFlag {
+	// Проверяем, удален ли URL
+	if link.Original == "" {
 		w.WriteHeader(http.StatusGone)
 		return
 	}

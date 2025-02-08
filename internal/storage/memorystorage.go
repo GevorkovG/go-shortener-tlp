@@ -108,8 +108,8 @@ func (s *InMemoryStorage) GetAllByUserID(userID string) ([]objects.Link, error) 
 func (s *InMemoryStorage) MarkAsDeleted(userID string, shortURLs []string) error {
 	for _, short := range shortURLs {
 		if s.userIDs[short] == userID {
-			delete(s.urls, short)
-			delete(s.userIDs, short)
+			s.urls[short] = ""        // Помечаем URL как удаленный
+			s.userIDs[short] = userID // Сохраняем userID
 		}
 	}
 	return nil
