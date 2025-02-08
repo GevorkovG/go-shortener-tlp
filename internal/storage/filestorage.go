@@ -3,6 +3,7 @@ package storage
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"os"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
@@ -169,38 +170,11 @@ func (fs *FileStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
 	return userLinks, nil
 }
 
-func (fs *FileStorage) MarkAsDeleted(userID string, shortURLs []string) error {
-	zap.L().Info("Marking URLs as deleted", zap.String("userID", userID), zap.Any("shortURLs", shortURLs))
-
-	// Проходим по всем коротким URL и помечаем их как удаленные
-	for _, short := range shortURLs {
-		if original, exists := fs.memStorage.urls[short]; exists {
-			// Проверяем, что URL принадлежит пользователю
-			if fs.memStorage.userIDs[short] == userID {
-				// Удаляем URL из хранилища
-				delete(fs.memStorage.urls, short)
-				delete(fs.memStorage.userIDs, short)
-
-				// Логируем удаление
-				zap.L().Info("URL marked as deleted", zap.String("short", short), zap.String("original", original))
-			}
-		}
+func (fs *FileStorage) MarkAsDeleted(userID string, short string) error {
+	if fs.memStorage.userIDs[short] == userID {
+		fs.memStorage.urls[short] = ""        // Помечаем URL как удаленный
+		fs.memStorage.userIDs[short] = userID // Сохраняем userID
+		return nil
 	}
-
-	// Сохраняем изменения в файл
-	var links []*objects.Link
-	for short, original := range fs.memStorage.urls {
-		links = append(links, &objects.Link{
-			Short:    short,
-			Original: original,
-			UserID:   fs.memStorage.userIDs[short],
-		})
-	}
-
-	if err := AllSaveToFile(links, fs.filePATH); err != nil {
-		zap.L().Error("Failed to save changes to file", zap.Error(err))
-		return err
-	}
-
-	return nil
+	return errors.New("URL not found or user mismatch")
 }

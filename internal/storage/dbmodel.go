@@ -138,7 +138,7 @@ func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
 	return links, nil
 }
 
-func (l *Link) MarkAsDeleted(userID string, shortURLs []string) error {
+func (l *Link) MarkAsDeleted(userID string, short string) error {
 	tx, err := l.Store.DB.Begin()
 	if err != nil {
 		return err
@@ -151,10 +151,8 @@ func (l *Link) MarkAsDeleted(userID string, shortURLs []string) error {
 	}
 	defer stmt.Close()
 
-	for _, short := range shortURLs {
-		if _, err := stmt.Exec(short, userID); err != nil {
-			return err
-		}
+	if _, err := stmt.Exec(short, userID); err != nil {
+		return err
 	}
 
 	return tx.Commit()

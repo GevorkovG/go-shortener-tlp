@@ -105,12 +105,11 @@ func (s *InMemoryStorage) GetAllByUserID(userID string) ([]objects.Link, error) 
 	return userLinks, nil
 }
 
-func (s *InMemoryStorage) MarkAsDeleted(userID string, shortURLs []string) error {
-	for _, short := range shortURLs {
-		if s.userIDs[short] == userID {
-			s.urls[short] = ""        // Помечаем URL как удаленный
-			s.userIDs[short] = userID // Сохраняем userID
-		}
+func (s *InMemoryStorage) MarkAsDeleted(userID string, short string) error {
+	if s.userIDs[short] == userID {
+		s.urls[short] = ""        // Помечаем URL как удаленный
+		s.userIDs[short] = userID // Сохраняем userID
+		return nil
 	}
-	return nil
+	return errors.New("URL not found or user mismatch")
 }

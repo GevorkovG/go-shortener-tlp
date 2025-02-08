@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
 	"go.uber.org/zap"
@@ -69,6 +70,36 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// fanIn объединяет несколько каналов resultChs в один.
+func fanIn(doneCh chan struct{}, resultChs ...chan bool) chan bool {
+	finalCh := make(chan bool)
+
+	var wg sync.WaitGroup
+
+	for _, ch := range resultChs {
+		chClosure := ch
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+			for data := range chClosure {
+				select {
+				case <-doneCh:
+					return
+				case finalCh <- data:
+				}
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(finalCh)
+	}()
+
+	return finalCh
+}
+
 func (a *App) APIDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 	var shortURLs []string
 	userID, ok := r.Context().Value(cookies.SecretKey).(string)
@@ -86,11 +117,39 @@ func (a *App) APIDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go func() {
-		if err := a.Storage.MarkAsDeleted(userID, shortURLs); err != nil {
-			zap.L().Error("Failed to mark URLs as deleted", zap.Error(err))
+	// Канал для завершения работы горутин
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+
+	// Создаем каналы для каждого URL
+	resultChs := make([]chan bool, len(shortURLs))
+	for i := range resultChs {
+		resultChs[i] = make(chan bool, 1)
+	}
+
+	// Запускаем горутины для удаления каждого URL
+	for i, short := range shortURLs {
+		go func(short string, resultCh chan bool) {
+			err := a.Storage.MarkAsDeleted(userID, short)
+			if err != nil {
+				zap.L().Error("Failed to mark URL as deleted", zap.String("short", short), zap.Error(err))
+				resultCh <- false
+			} else {
+				resultCh <- true
+			}
+			close(resultCh)
+		}(short, resultChs[i])
+	}
+
+	// Объединяем результаты с помощью FanIn
+	finalCh := fanIn(doneCh, resultChs...)
+
+	// Ожидаем завершения всех горутин
+	for success := range finalCh {
+		if !success {
+			zap.L().Warn("Failed to delete some URLs")
 		}
-	}()
+	}
 
 	w.WriteHeader(http.StatusAccepted)
 }

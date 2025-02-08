@@ -13,5 +13,5 @@ type Storage interface {
 	GetOriginal(short string) (*Link, error)
 	GetShort(original string) (*Link, error)
 	GetAllByUserID(userID string) ([]Link, error)
-	MarkAsDeleted(userID string, shortURLs []string) error
+	MarkAsDeleted(userID string, short string) error
 }
