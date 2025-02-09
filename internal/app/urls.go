@@ -5,10 +5,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
-	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"go.uber.org/zap"
 )
 
@@ -87,27 +85,19 @@ func (a *App) APIDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	go func(urls []string, userID string) {
+		for _, short := range urls {
 
-	// Канал для завершения работы горутин
-	doneCh := make(chan struct{})
-	defer close(doneCh)
-
-	// Создаем несколько горутин для обработки URL (FanOut)
-	channels := fanOut(doneCh, userID, shortURLs, a.Storage)
-
-	// Объединяем результаты из всех горутин (FanIn)
-	finalCh := fanIn(doneCh, channels...)
-
-	// Ожидаем завершения всех горутин
-	for success := range finalCh {
-		if !success {
-			zap.L().Warn("Failed to delete some URLs")
+			if err := a.Storage.MarkAsDeleted(userID, short); err != nil {
+				zap.L().Error("Failed to mark URL as deleted", zap.String("short", short), zap.Error(err))
+			}
 		}
-	}
+	}(shortURLs, userID)
 
 	w.WriteHeader(http.StatusAccepted)
 }
 
+/*
 // fanOut создает несколько горутин для обработки каждого URL.
 func fanOut(doneCh chan struct{}, userID string, shortURLs []string, storage objects.Storage) []chan bool {
 	// Количество горутин (можно настроить в зависимости от нагрузки)
@@ -184,3 +174,4 @@ func fanIn(doneCh chan struct{}, resultChs ...chan bool) chan bool {
 
 	return finalCh
 }
+*/
