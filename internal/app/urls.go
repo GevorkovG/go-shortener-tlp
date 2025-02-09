@@ -88,10 +88,6 @@ func (a *App) APIDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, short := range shortURLs {
-		log.Printf("url=%s    ", short)
-	}
-
 	// Канал для завершения работы горутин
 	doneCh := make(chan struct{})
 	defer close(doneCh)
@@ -115,19 +111,30 @@ func (a *App) APIDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 // fanOut создает несколько горутин для обработки каждого URL.
 func fanOut(doneCh chan struct{}, userID string, shortURLs []string, storage objects.Storage) []chan bool {
 	// Количество горутин (можно настроить в зависимости от нагрузки)
-	numWorkers := 10
+	numWorkers := 4 // Уменьшим количество горутин для примера
 	channels := make([]chan bool, numWorkers)
+
+	// Разделяем shortURLs на части для каждой горутины
+	chunkSize := (len(shortURLs) + numWorkers - 1) / numWorkers
 
 	for i := 0; i < numWorkers; i++ {
 		// Создаем канал для результатов
 		resultCh := make(chan bool, 1)
 		channels[i] = resultCh
 
-		// Запускаем горутину для обработки URL
-		go func(resultCh chan bool) {
+		// Определяем диапазон URL для текущей горутины
+		start := i * chunkSize
+		end := start + chunkSize
+		if end > len(shortURLs) {
+			end = len(shortURLs)
+		}
+
+		// Запускаем горутину для обработки своей части URL
+		go func(resultCh chan bool, urls []string) {
 			defer close(resultCh)
 
-			for _, short := range shortURLs {
+			for _, short := range urls {
+				log.Printf("fanOUT short: %s", short)
 				select {
 				case <-doneCh: // Проверяем сигнал завершения
 					return
@@ -141,7 +148,7 @@ func fanOut(doneCh chan struct{}, userID string, shortURLs []string, storage obj
 					}
 				}
 			}
-		}(resultCh)
+		}(resultCh, shortURLs[start:end])
 	}
 
 	return channels
@@ -151,6 +158,7 @@ func fanOut(doneCh chan struct{}, userID string, shortURLs []string, storage obj
 func fanIn(doneCh chan struct{}, resultChs ...chan bool) chan bool {
 	finalCh := make(chan bool)
 
+	// понадобится для ожидания всех горутин
 	var wg sync.WaitGroup
 
 	for _, ch := range resultChs {
