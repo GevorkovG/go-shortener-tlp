@@ -94,7 +94,7 @@ func (l *Link) GetOriginal(short string) (*objects.Link, error) {
 	link := &objects.Link{
 		Short: short,
 	}
-	if err := l.Store.DB.QueryRow("SELECT original FROM links WHERE short = $1", link.Short).Scan(&link.Original); err != nil {
+	if err := l.Store.DB.QueryRow("SELECT original, is_deleted FROM links WHERE short = $1", link.Short).Scan(&link.Original, &link.DeletedFlag); err != nil {
 		zap.L().Error("Failed to get original URL", zap.String("short", short), zap.Error(err))
 		return nil, err
 	}

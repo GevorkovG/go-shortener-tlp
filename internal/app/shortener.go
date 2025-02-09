@@ -168,6 +168,7 @@ func (a *App) GetOriginalURL(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	link, err := a.Storage.GetOriginal(id)
+	log.Printf("GetOriginalURL short:%s %t", link.Short, link.DeletedFlag)
 	if err != nil {
 		zap.L().Error("Failed to get original URL", zap.String("id", id), zap.Error(err))
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
@@ -175,7 +176,7 @@ func (a *App) GetOriginalURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Проверяем, удален ли URL
-	if link.Original == "" {
+	if link.DeletedFlag || link.Original == "" {
 		w.WriteHeader(http.StatusGone)
 		return
 	}
