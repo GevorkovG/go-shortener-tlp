@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
+	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"go.uber.org/zap"
 )
 
@@ -70,6 +71,82 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *App) APIDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
+	var shortURLs []string
+	userID, ok := r.Context().Value(cookies.SecretKey).(string)
+
+	if !ok || userID == "" {
+		zap.L().Warn("Unauthorized access attempt")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&shortURLs)
+	if err != nil {
+		zap.L().Error("Failed to decode request body", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for _, short := range shortURLs {
+		log.Printf("url=%s    ", short)
+	}
+
+	// Канал для завершения работы горутин
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+
+	// Создаем несколько горутин для обработки URL (FanOut)
+	channels := fanOut(doneCh, userID, shortURLs, a.Storage)
+
+	// Объединяем результаты из всех горутин (FanIn)
+	finalCh := fanIn(doneCh, channels...)
+
+	// Ожидаем завершения всех горутин
+	for success := range finalCh {
+		if !success {
+			zap.L().Warn("Failed to delete some URLs")
+		}
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
+// fanOut создает несколько горутин для обработки каждого URL.
+func fanOut(doneCh chan struct{}, userID string, shortURLs []string, storage objects.Storage) []chan bool {
+	// Количество горутин (можно настроить в зависимости от нагрузки)
+	numWorkers := 10
+	channels := make([]chan bool, numWorkers)
+
+	for i := 0; i < numWorkers; i++ {
+		// Создаем канал для результатов
+		resultCh := make(chan bool, 1)
+		channels[i] = resultCh
+
+		// Запускаем горутину для обработки URL
+		go func(resultCh chan bool) {
+			defer close(resultCh)
+
+			for _, short := range shortURLs {
+				select {
+				case <-doneCh: // Проверяем сигнал завершения
+					return
+				default:
+					err := storage.MarkAsDeleted(userID, short)
+					if err != nil {
+						zap.L().Error("Failed to mark URL as deleted", zap.String("short", short), zap.Error(err))
+						resultCh <- false
+					} else {
+						resultCh <- true
+					}
+				}
+			}
+		}(resultCh)
+	}
+
+	return channels
+}
+
 // fanIn объединяет несколько каналов resultChs в один.
 func fanIn(doneCh chan struct{}, resultChs ...chan bool) chan bool {
 	finalCh := make(chan bool)
@@ -98,58 +175,4 @@ func fanIn(doneCh chan struct{}, resultChs ...chan bool) chan bool {
 	}()
 
 	return finalCh
-}
-
-func (a *App) APIDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
-	var shortURLs []string
-	userID, ok := r.Context().Value(cookies.SecretKey).(string)
-
-	if !ok || userID == "" {
-		zap.L().Warn("Unauthorized access attempt")
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	err := json.NewDecoder(r.Body).Decode(&shortURLs)
-	if err != nil {
-		zap.L().Error("Failed to decode request body", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Канал для завершения работы горутин
-	doneCh := make(chan struct{})
-	defer close(doneCh)
-
-	// Создаем каналы для каждого URL
-	resultChs := make([]chan bool, len(shortURLs))
-	for i := range resultChs {
-		resultChs[i] = make(chan bool, 1)
-	}
-
-	// Запускаем горутины для удаления каждого URL
-	for i, short := range shortURLs {
-		go func(short string, resultCh chan bool) {
-			err := a.Storage.MarkAsDeleted(userID, short)
-			if err != nil {
-				zap.L().Error("Failed to mark URL as deleted", zap.String("short", short), zap.Error(err))
-				resultCh <- false
-			} else {
-				resultCh <- true
-			}
-			close(resultCh)
-		}(short, resultChs[i])
-	}
-
-	// Объединяем результаты с помощью FanIn
-	finalCh := fanIn(doneCh, resultChs...)
-
-	// Ожидаем завершения всех горутин
-	for success := range finalCh {
-		if !success {
-			zap.L().Warn("Failed to delete some URLs")
-		}
-	}
-
-	w.WriteHeader(http.StatusAccepted)
 }
