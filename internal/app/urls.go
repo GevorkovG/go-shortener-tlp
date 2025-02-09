@@ -5,8 +5,10 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
+	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"go.uber.org/zap"
 )
 
@@ -85,45 +87,43 @@ func (a *App) APIDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	go func(urls []string, userID string) {
-		for _, short := range urls {
 
-			if err := a.Storage.MarkAsDeleted(userID, short); err != nil {
-				zap.L().Error("Failed to mark URL as deleted", zap.String("short", short), zap.Error(err))
-			}
+	// Канал для завершения работы горутин
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+
+	// Создаем несколько горутин для обработки URL (FanOut)
+	channels := fanOut(doneCh, userID, shortURLs, a.Storage)
+
+	// Объединяем результаты из всех горутин (FanIn)
+	finalCh := fanIn(doneCh, channels...)
+
+	// Ожидаем завершения всех горутин
+	for success := range finalCh {
+		if !success {
+			zap.L().Warn("Failed to delete some URLs")
 		}
-	}(shortURLs, userID)
+	}
 
 	w.WriteHeader(http.StatusAccepted)
 }
 
-/*
 // fanOut создает несколько горутин для обработки каждого URL.
 func fanOut(doneCh chan struct{}, userID string, shortURLs []string, storage objects.Storage) []chan bool {
 	// Количество горутин (можно настроить в зависимости от нагрузки)
-	numWorkers := 4 // Уменьшим количество горутин для примера
+	numWorkers := 5
 	channels := make([]chan bool, numWorkers)
-
-	// Разделяем shortURLs на части для каждой горутины
-	chunkSize := (len(shortURLs) + numWorkers - 1) / numWorkers
 
 	for i := 0; i < numWorkers; i++ {
 		// Создаем канал для результатов
 		resultCh := make(chan bool, 1)
 		channels[i] = resultCh
 
-		// Определяем диапазон URL для текущей горутины
-		start := i * chunkSize
-		end := start + chunkSize
-		if end > len(shortURLs) {
-			end = len(shortURLs)
-		}
-
-		// Запускаем горутину для обработки своей части URL
-		go func(resultCh chan bool, urls []string) {
+		// Запускаем горутину для обработки URL
+		go func(resultCh chan bool) {
 			defer close(resultCh)
 
-			for _, short := range urls {
+			for _, short := range shortURLs {
 				log.Printf("fanOUT short: %s", short)
 				select {
 				case <-doneCh: // Проверяем сигнал завершения
@@ -131,6 +131,7 @@ func fanOut(doneCh chan struct{}, userID string, shortURLs []string, storage obj
 				default:
 					err := storage.MarkAsDeleted(userID, short)
 					if err != nil {
+						log.Printf("fanOUT short: %s", err)
 						zap.L().Error("Failed to mark URL as deleted", zap.String("short", short), zap.Error(err))
 						resultCh <- false
 					} else {
@@ -138,7 +139,7 @@ func fanOut(doneCh chan struct{}, userID string, shortURLs []string, storage obj
 					}
 				}
 			}
-		}(resultCh, shortURLs[start:end])
+		}(resultCh)
 	}
 
 	return channels
@@ -174,4 +175,3 @@ func fanIn(doneCh chan struct{}, resultChs ...chan bool) chan bool {
 
 	return finalCh
 }
-*/
