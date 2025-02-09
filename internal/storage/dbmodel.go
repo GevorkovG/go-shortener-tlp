@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"log"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
@@ -141,19 +142,32 @@ func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
 func (l *Link) MarkAsDeleted(userID string, short string) error {
 	tx, err := l.Store.DB.Begin()
 	if err != nil {
+		zap.L().Error("Failed to begin transaction", zap.Error(err))
+		log.Printf("Failed to begin transaction")
 		return err
 	}
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare("UPDATE links SET is_deleted = TRUE WHERE short = $1 AND userid = $2")
 	if err != nil {
+		log.Printf("Failed to prepare statement")
+		zap.L().Error("Failed to prepare statement", zap.Error(err))
 		return err
 	}
 	defer stmt.Close()
 
 	if _, err := stmt.Exec(short, userID); err != nil {
+		log.Printf("Failed to mark URL as deleted---Short:%s    userID:%s   error: %s", short, userID, err)
+		zap.L().Error("Failed to mark URL as deleted", zap.String("short", short), zap.String("userID", userID), zap.Error(err))
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		log.Printf("Successfully deleted---Short:%s    userID:%s", short, userID)
+		zap.L().Error("Failed to commit transaction", zap.Error(err))
+		return err
+	}
+	log.Printf("Successfully deleted---Short:%s    userID:%s", short, userID)
+	zap.L().Info("Successfully marked URL as deleted", zap.String("short", short), zap.String("userID", userID))
+	return nil
 }
