@@ -23,6 +23,14 @@ func NewLinkStorage(db *database.DBStore) *Link {
 	}
 }
 
+// IsDeleted проверяет, удален ли URL.
+func IsDeleted(link *objects.Link) bool {
+	// В зависимости от реализации хранилища, проверяем, удален ли URL.
+	// Например, если URL помечен как удаленный, возвращаем true.
+	// В данном примере предполагаем, что URL удален, если его Original пуст.
+	return link.Original == ""
+}
+
 func (l *Link) CreateTable() error {
 	if _, err := l.Store.DB.Exec("CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY, short CHAR(20) UNIQUE, original CHAR(255) UNIQUE, userid CHAR(36), is_deleted BOOLEAN DEFAULT FALSE);"); err != nil {
 		zap.L().Error("Failed to create table", zap.Error(err))

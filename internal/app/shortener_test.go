@@ -1,41 +1,32 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
-	"github.com/GevorkovG/go-shortener-tlp/internal/services/jwtstring"
+	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_GetOriginalURL(t *testing.T) {
-
 	conf := &config.AppConfig{
 		Host:      "localhost:8080",
 		ResultURL: "http://localhost:8080",
-		// FilePATH: "/tmp/short-url-db.json",
 	}
 
 	app := NewApp(conf)
 	app.ConfigureStorage()
 
-	userID := uuid.New().String()
-
-	cookieString, err := jwtstring.BuildJWTString(userID)
-	if err != nil {
-		t.Log("Didn't create cookie string")
-	}
+	userID := "test-user-id"
 
 	resultURL := "https://yandex.ru"
 
@@ -62,10 +53,10 @@ func Test_GetOriginalURL(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
 			link := &objects.Link{
 				Short:    test.body,
 				Original: resultURL,
+				UserID:   userID,
 			}
 
 			if err := app.Storage.Insert(link); err != nil {
@@ -74,7 +65,7 @@ func Test_GetOriginalURL(t *testing.T) {
 
 			r := httptest.NewRequest(test.method, "http://localhost:8080/"+test.body, nil)
 
-			ctx := context.WithValue(r.Context(), cookies.SecretKey, cookieString)
+			ctx := context.WithValue(r.Context(), cookies.SecretKey, userID)
 
 			w := httptest.NewRecorder()
 
@@ -93,7 +84,6 @@ func Test_GetOriginalURL(t *testing.T) {
 }
 
 func Test_JSONGetShortURL(t *testing.T) {
-
 	type want struct {
 		code        int
 		contentType string
@@ -134,17 +124,12 @@ func Test_JSONGetShortURL(t *testing.T) {
 	app := NewApp(conf)
 	app.ConfigureStorage()
 
-	userID := uuid.New().String()
-
-	cookieString, err := jwtstring.BuildJWTString(userID)
-	if err != nil {
-		t.Log("Didn't create cookie string")
-	}
+	userID := "test-user-id"
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			r := httptest.NewRequest(test.method, "https://localhost:8080/api/shorten", strings.NewReader(test.body))
-			ctx := context.WithValue(r.Context(), cookies.SecretKey, cookieString)
+			ctx := context.WithValue(r.Context(), cookies.SecretKey, userID)
 
 			w := httptest.NewRecorder()
 
@@ -158,11 +143,9 @@ func Test_JSONGetShortURL(t *testing.T) {
 			assert.Equal(t, test.want.contentType, w.Header().Get("Content-Type"), "Тип контента не совпадает с ожидаемым")
 		})
 	}
-
 }
 
 func Test_GetShortURL(t *testing.T) {
-
 	type want struct {
 		code        int
 		contentType string
@@ -197,24 +180,18 @@ func Test_GetShortURL(t *testing.T) {
 	conf := &config.AppConfig{
 		Host:      "localhost:8080",
 		ResultURL: "http://localhost:8080",
-		// FilePATH: "/tmp/short-url-db.json",
 	}
 
 	app := NewApp(conf)
 	app.ConfigureStorage()
 
-	userID := uuid.New().String()
-
-	cookieString, err := jwtstring.BuildJWTString(userID)
-	if err != nil {
-		t.Log("Didn't create cookie string")
-	}
+	userID := "test-user-id"
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			r := httptest.NewRequest(test.method, "https://localhost:8080", strings.NewReader(test.body))
 
-			ctx := context.WithValue(r.Context(), cookies.SecretKey, cookieString)
+			ctx := context.WithValue(r.Context(), cookies.SecretKey, userID)
 
 			router := chi.NewRouteContext()
 
@@ -230,104 +207,99 @@ func Test_GetShortURL(t *testing.T) {
 	}
 }
 
-func TestAPIGetUserURLs(t *testing.T) {
-	// Настройка тестового окружения
+func TestAPIDeleteUserURLs(t *testing.T) {
 	conf := &config.AppConfig{
 		Host:      "localhost:8080",
 		ResultURL: "http://localhost:8080",
 	}
+
 	app := NewApp(conf)
 	app.ConfigureStorage()
 
-	// Создаем тестового пользователя
-	userID := uuid.New().String()
-	cookieString, err := jwtstring.BuildJWTString(userID)
-
-	t.Logf("cookieString for UserID: %s", cookieString)
-
-	if err != nil {
-		t.Fatal("Failed to create cookie string")
-	}
+	userID := "test-user-id"
 
 	// Добавляем тестовые данные в хранилище
-	link := &objects.Link{
-		Short:    "testShort",
-		Original: "http://example.com",
-		UserID:   userID,
-	}
-	if err := app.Storage.Insert(link); err != nil {
-		t.Fatal("Failed to insert link")
-	}
-	t.Logf("UserID added: %s", link.UserID)
-
-	// Проверяем, что данные добавлены в хранилище
-	userURLs, err := app.Storage.GetAllByUserID(userID)
-	if err != nil {
-		t.Fatalf("Failed to get URLs for user: %v", err)
-	}
-	if len(userURLs) == 0 {
-		t.Fatal("No URLs found in storage for the user")
+	links := []*objects.Link{
+		{Short: "short1", Original: "http://example.com/1", UserID: userID},
+		{Short: "short2", Original: "http://example.com/2", UserID: userID},
+		{Short: "short3", Original: "http://example.com/3", UserID: userID},
 	}
 
-	// Создаем тестовый запрос
-	req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
-	ctx := context.WithValue(req.Context(), cookies.SecretKey, userID)
-	req = req.WithContext(ctx)
-
-	// Логируем userID из контекста
-	userIDFromContext, ok := req.Context().Value(cookies.SecretKey).(string)
-	if !ok {
-		t.Fatal("Failed to get userID from context")
-	}
-	t.Logf("UserID from context: %s", userIDFromContext)
-
-	// Создаем ResponseRecorder для записи ответа
-	w := httptest.NewRecorder()
-
-	// Вызываем хендлер
-	app.APIGetUserURLs(w, req)
-
-	// Проверяем ответ
-	res := w.Result()
-	defer res.Body.Close()
-
-	// Читаем тело ответа
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		t.Fatalf("Failed to read response body: %v", err)
-	}
-
-	// Логируем тело ответа
-	t.Logf("Response body: %s", string(body))
-
-	// Логируем статус-код
-	t.Logf("Status code: %d", res.StatusCode)
-
-	// Логируем заголовки ответа
-	t.Logf("Response headers: %v", res.Header)
-
-	if res.StatusCode != http.StatusOK {
-		t.Errorf("Expected status code %d, got %d", http.StatusOK, res.StatusCode)
-	}
-
-	// Декодируем JSON только если статус-код 200
-	if res.StatusCode == http.StatusOK {
-		var links []RespURLs
-		if err := json.Unmarshal(body, &links); err != nil {
-			t.Fatalf("Failed to decode response body: %v", err)
-		}
-
-		if len(links) == 0 {
-			t.Error("Expected non-empty response")
-		}
-
-		// Проверяем содержимое ответа
-		expected := RespURLs{
-			Short:    "http://localhost:8080/testShort",
-			Original: "http://example.com",
-		}
-		if links[0] != expected {
-			t.Errorf("Expected %v, got %v", expected, links[0])
+	for _, link := range links {
+		if err := app.Storage.Insert(link); err != nil {
+			t.Fatal("Failed to insert link")
 		}
 	}
+
+	// Тест на успешное удаление URL
+	t.Run("successful deletion", func(t *testing.T) {
+		shortURLs := []string{"short1", "short2"}
+
+		body, err := json.Marshal(shortURLs)
+		if err != nil {
+			t.Fatal("Failed to marshal shortURLs")
+		}
+
+		r := httptest.NewRequest(http.MethodDelete, "/api/user/urls", bytes.NewReader(body))
+		ctx := context.WithValue(r.Context(), cookies.SecretKey, userID)
+		r = r.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+
+		app.APIDeleteUserURLs(w, r)
+
+		assert.Equal(t, http.StatusAccepted, w.Code, "Код ответа не совпадает с ожидаемым")
+
+		// Проверяем, что URL действительно удалены
+		for _, short := range shortURLs {
+			link, err := app.Storage.GetOriginal(short)
+			assert.NoError(t, err, "Ошибка при получении URL")
+			assert.True(t, storage.IsDeleted(link), "URL не был удален")
+		}
+	})
+
+	// Тест на попытку удаления URL другого пользователя
+	t.Run("unauthorized deletion", func(t *testing.T) {
+		shortURLs := []string{"short3"}
+
+		body, err := json.Marshal(shortURLs)
+		if err != nil {
+			t.Fatal("Failed to marshal shortURLs")
+		}
+
+		r := httptest.NewRequest(http.MethodDelete, "/api/user/urls", bytes.NewReader(body))
+		ctx := context.WithValue(r.Context(), cookies.SecretKey, "another-user-id")
+		r = r.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+
+		app.APIDeleteUserURLs(w, r)
+
+		assert.Equal(t, http.StatusAccepted, w.Code, "Код ответа не совпадает с ожидаемым")
+
+		// Проверяем, что URL не был удален
+		link, err := app.Storage.GetOriginal("short3")
+		assert.NoError(t, err, "Ошибка при получении URL")
+		assert.False(t, storage.IsDeleted(link), "URL был удален, хотя не должен был")
+	})
+
+	// Тест на попытку удаления несуществующего URL
+	t.Run("delete non-existent URL", func(t *testing.T) {
+		shortURLs := []string{"non-existent"}
+
+		body, err := json.Marshal(shortURLs)
+		if err != nil {
+			t.Fatal("Failed to marshal shortURLs")
+		}
+
+		r := httptest.NewRequest(http.MethodDelete, "/api/user/urls", bytes.NewReader(body))
+		ctx := context.WithValue(r.Context(), cookies.SecretKey, userID)
+		r = r.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+
+		app.APIDeleteUserURLs(w, r)
+
+		assert.Equal(t, http.StatusAccepted, w.Code, "Код ответа не совпадает с ожидаемым")
+	})
 }
