@@ -78,8 +78,6 @@ func Cookies(h http.Handler) http.Handler {
 				Value: tokenString,
 				Path:  "/",
 			})
-
-			//log.Printf("New UserID: %s, Token: %s", userID, tokenString)
 		}
 
 		ctx := context.WithValue(r.Context(), SecretKey, userID)
