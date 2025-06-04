@@ -146,7 +146,7 @@ func (fs *FileStorage) GetShort(original string) (*objects.Link, error) {
 
 func (fs *FileStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
 	zap.L().Info("Getting URLs for user", zap.String("userID", userID))
-	var userLinks []objects.Link
+	userLinks := make([]objects.Link, 0, len(fs.memStorage.urls))
 
 	zap.L().Info("Querying user URLs from file storage", zap.String("userID", userID))
 
