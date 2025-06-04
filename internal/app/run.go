@@ -139,7 +139,6 @@ func Run() {
 	)
 
 	newApp := NewApp(conf)
-	newApp.ConfigureStorage()
 
 	r := chi.NewRouter()
 

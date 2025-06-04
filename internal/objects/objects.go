@@ -14,4 +14,5 @@ type Storage interface {
 	GetShort(original string) (*Link, error)
 	GetAllByUserID(userID string) ([]Link, error)
 	MarkAsDeleted(userID string, short string) error
+	Ping() error
 }

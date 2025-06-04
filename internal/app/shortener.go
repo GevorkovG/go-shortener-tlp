@@ -189,3 +189,12 @@ func (a *App) GetOriginalURL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", link.Original)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
+
+func (a *App) Ping(w http.ResponseWriter, _ *http.Request) {
+	if err := a.Storage.Ping(); err != nil {
+		log.Println("Storage ping failed:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}

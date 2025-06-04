@@ -178,3 +178,7 @@ func (fs *FileStorage) MarkAsDeleted(userID string, short string) error {
 	}
 	return errors.New("URL not found or user mismatch")
 }
+
+func (fs *FileStorage) Ping() error {
+	return nil
+}

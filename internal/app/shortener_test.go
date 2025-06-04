@@ -24,7 +24,6 @@ func Test_GetOriginalURL(t *testing.T) {
 	}
 
 	app := NewApp(conf)
-	app.ConfigureStorage()
 
 	userID := "test-user-id"
 
@@ -122,7 +121,6 @@ func Test_JSONGetShortURL(t *testing.T) {
 	}
 
 	app := NewApp(conf)
-	app.ConfigureStorage()
 
 	userID := "test-user-id"
 
@@ -183,7 +181,6 @@ func Test_GetShortURL(t *testing.T) {
 	}
 
 	app := NewApp(conf)
-	app.ConfigureStorage()
 
 	userID := "test-user-id"
 
@@ -214,7 +211,6 @@ func TestAPIDeleteUserURLs(t *testing.T) {
 	}
 
 	app := NewApp(conf)
-	app.ConfigureStorage()
 
 	userID := "test-user-id"
 

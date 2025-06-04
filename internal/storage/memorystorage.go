@@ -113,3 +113,7 @@ func (s *InMemoryStorage) MarkAsDeleted(userID string, short string) error {
 	}
 	return errors.New("URL not found or user mismatch")
 }
+
+func (s *InMemoryStorage) Ping() error {
+	return nil
+}

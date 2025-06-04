@@ -179,3 +179,8 @@ func (l *Link) MarkAsDeleted(userID string, short string) error {
 	zap.L().Info("Successfully marked URL as deleted", zap.String("short", short), zap.String("userID", userID))
 	return nil
 }
+
+func (ls *Link) Ping() error {
+
+	return ls.Store.PingDB()
+}
