@@ -180,7 +180,7 @@ func (l *Link) MarkAsDeleted(userID string, short string) error {
 	return nil
 }
 
-func (ls *Link) Ping() error {
+func (l *Link) Ping() error {
 
-	return ls.Store.PingDB()
+	return l.Store.PingDB()
 }
