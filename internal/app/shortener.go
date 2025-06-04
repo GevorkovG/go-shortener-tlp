@@ -44,20 +44,20 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	var req Request
 	var status = http.StatusCreated
 	var UserID string
-	var err error
 
 	// Извлекаем UserID из контекста
 	token := r.Context().Value(cookies.SecretKey)
 	if token != nil {
+		var err error
 		UserID, err = usertoken.GetUserID(token.(string))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
+			zap.L().Warn("Failed to get UserID from token, proceeding without it", zap.Error(err))
+			UserID = ""
 		}
 	}
 
 	// Декодируем тело запроса
-	err = json.NewDecoder(r.Body).Decode(&req)
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
