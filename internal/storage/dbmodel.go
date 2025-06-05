@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"log"
 
@@ -31,28 +32,33 @@ func IsDeleted(link *objects.Link) bool {
 	return link.Original == ""
 }
 
-func (l *Link) CreateTable() error {
-	if _, err := l.Store.DB.Exec("CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY, short CHAR(20) UNIQUE, original CHAR(255) UNIQUE, userid CHAR(36), is_deleted BOOLEAN DEFAULT FALSE);"); err != nil {
+func (l *Link) CreateTable(ctx context.Context) error {
+	if _, err := l.Store.DB.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY, short CHAR(20) UNIQUE, original CHAR(255) UNIQUE, userid CHAR(36), is_deleted BOOLEAN DEFAULT FALSE);"); err != nil {
 		zap.L().Error("Failed to create table", zap.Error(err))
 		return err
 	}
 	return nil
 }
 
-func (l *Link) Insert(link *objects.Link) error {
-	zap.L().Info("DB Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
+func (l *Link) Insert(ctx context.Context, link *objects.Link) error {
+	zap.L().Info("DB Inserting URL",
+		zap.String("short", link.Short),
+		zap.String("original", link.Original),
+		zap.String("userID", link.UserID))
 
-	if err := l.CreateTable(); err != nil {
+	if err := l.CreateTable(ctx); err != nil {
 		return err
 	}
 
-	if _, err := l.Store.DB.Exec(
+	if _, err := l.Store.DB.ExecContext(ctx,
 		"INSERT INTO links (short, original, userid) VALUES ($1, $2, $3)",
 		link.Short, link.Original, link.UserID); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				zap.L().Warn("Conflict on inserting new record", zap.String("short", link.Short), zap.String("original", link.Original))
+				zap.L().Warn("Conflict on inserting new record",
+					zap.String("short", link.Short),
+					zap.String("original", link.Original))
 				return ErrConflict
 			}
 		}
@@ -60,12 +66,15 @@ func (l *Link) Insert(link *objects.Link) error {
 		return err
 	}
 
-	zap.L().Info("DB URL inserted successfully", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
+	zap.L().Info("DB URL inserted successfully",
+		zap.String("short", link.Short),
+		zap.String("original", link.Original),
+		zap.String("userID", link.UserID))
 	return nil
 }
 
-func (l *Link) InsertLinks(links []*objects.Link) error {
-	if err := l.CreateTable(); err != nil {
+func (l *Link) InsertLinks(ctx context.Context, links []*objects.Link) error {
+	if err := l.CreateTable(ctx); err != nil {
 		return err
 	}
 

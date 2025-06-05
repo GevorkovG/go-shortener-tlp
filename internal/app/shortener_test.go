@@ -58,13 +58,14 @@ func Test_GetOriginalURL(t *testing.T) {
 				UserID:   userID,
 			}
 
-			if err := app.Storage.Insert(link); err != nil {
+			ctx := context.Background()
+			if err := app.Storage.Insert(ctx, link); err != nil {
 				t.Log(err)
 			}
 
 			r := httptest.NewRequest(test.method, "http://localhost:8080/"+test.body, nil)
 
-			ctx := context.WithValue(r.Context(), cookies.SecretKey, userID)
+			ctx = context.WithValue(r.Context(), cookies.SecretKey, userID)
 
 			w := httptest.NewRecorder()
 
@@ -222,7 +223,7 @@ func TestAPIDeleteUserURLs(t *testing.T) {
 	}
 
 	for _, link := range links {
-		if err := app.Storage.Insert(link); err != nil {
+		if err := app.Storage.Insert(context.Background(), link); err != nil {
 			t.Fatal("Failed to insert link")
 		}
 	}

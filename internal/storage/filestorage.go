@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -91,10 +92,10 @@ func (fs *FileStorage) Load(data map[string]string) {
 	fs.memStorage.Load(data)
 }
 
-func (fs *FileStorage) Insert(link *objects.Link) error {
+func (fs *FileStorage) Insert(ctx context.Context, link *objects.Link) error {
 	zap.L().Info("FILE Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
 
-	err := fs.memStorage.Insert(link)
+	err := fs.memStorage.Insert(ctx, link)
 	if err != nil {
 		return err
 	}
@@ -108,9 +109,9 @@ func (fs *FileStorage) Insert(link *objects.Link) error {
 	return nil
 }
 
-func (fs *FileStorage) InsertLinks(links []*objects.Link) error {
+func (fs *FileStorage) InsertLinks(ctx context.Context, links []*objects.Link) error {
 
-	err := fs.memStorage.InsertLinks(links)
+	err := fs.memStorage.InsertLinks(ctx, links)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"log"
 
@@ -24,7 +25,7 @@ func (s *InMemoryStorage) Load(data map[string]string) {
 	s.urls = data
 }
 
-func (s *InMemoryStorage) Insert(link *objects.Link) error {
+func (s *InMemoryStorage) Insert(ctx context.Context, link *objects.Link) error {
 	zap.L().Info("Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
 
 	s.urls[link.Short] = link.Original
@@ -36,7 +37,7 @@ func (s *InMemoryStorage) Insert(link *objects.Link) error {
 	return nil
 }
 
-func (s *InMemoryStorage) InsertLinks(links []*objects.Link) error {
+func (s *InMemoryStorage) InsertLinks(ctx context.Context, links []*objects.Link) error {
 	zap.L().Info("MEMORY Inserting multiple URLs", zap.Any("links", links))
 
 	for _, link := range links {

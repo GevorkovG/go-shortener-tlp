@@ -1,5 +1,7 @@
 package objects
 
+import "context"
+
 type Link struct {
 	Short       string `json:"short_url"`
 	Original    string `json:"original_url"`
@@ -8,8 +10,8 @@ type Link struct {
 }
 
 type Storage interface {
-	Insert(link *Link) error
-	InsertLinks(links []*Link) error
+	Insert(ctx context.Context, link *Link) error
+	InsertLinks(ctx context.Context, links []*Link) error
 	GetOriginal(short string) (*Link, error)
 	GetShort(original string) (*Link, error)
 	GetAllByUserID(userID string) ([]Link, error)

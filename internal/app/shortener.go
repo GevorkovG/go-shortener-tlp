@@ -71,7 +71,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Сохраняем ссылку в хранилище
-	if err = a.Storage.Insert(link); err != nil {
+	if err = a.Storage.Insert(r.Context(), link); err != nil {
 		if errors.Is(err, storage.ErrConflict) {
 			// Если URL уже существует, получаем существующий короткий URL
 			link, err = a.Storage.GetShort(link.Original)
@@ -142,7 +142,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	//DEBUG--------------------------------------------------------------------------------------------------
 	log.Printf("internal/app/shortener.go GetShortURL Original:%s UserID:%s Short: %s", link.Original, link.UserID, link.Short)
 
-	if err = a.Storage.Insert(link); err != nil {
+	if err = a.Storage.Insert(r.Context(), link); err != nil {
 		if errors.Is(err, storage.ErrConflict) {
 			link, err = a.Storage.GetShort(link.Original)
 			if err != nil {
