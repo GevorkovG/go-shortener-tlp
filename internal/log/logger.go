@@ -1,4 +1,4 @@
-package logger
+package log
 
 import (
 	"net/http"
@@ -7,60 +7,66 @@ import (
 	"go.uber.org/zap"
 )
 
-type (
-	// берём структуру для хранения сведений об ответе
-	responseData struct {
-		status int
-		size   int
-	}
+// responseData хранит информацию о HTTP-ответе
+type responseData struct {
+	status int
+	size   int
+}
 
-	// добавляем реализацию http.ResponseWriter
-	loggingResponseWriter struct {
-		http.ResponseWriter // встраиваем оригинальный http.ResponseWriter
-		responseData        *responseData
-	}
-)
+// loggingResponseWriter оборачивает http.ResponseWriter для захвата статуса и размера ответа
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	responseData *responseData
+}
 
+// Write переопределяет метод Write для захвата размера ответа
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
-	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)
-	r.responseData.size += size // захватываем размер
+	r.responseData.size += size
 	return size, err
 }
 
+// WriteHeader переопределяет метод WriteHeader для захвата статуса ответа
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
-	// записываем код статуса, используя оригинальный http.ResponseWriter
 	r.ResponseWriter.WriteHeader(statusCode)
-	r.responseData.status = statusCode // захватываем код статуса
+	r.responseData.status = statusCode
 }
 
-var logger *zap.Logger
+// Logger — глобальная переменная для логгера
+var Logger *zap.Logger
 
+// InitLogger инициализирует логгер
 func InitLogger() {
-	logger, _ = zap.NewDevelopment()
+	var err error
+	Logger, err = zap.NewDevelopment() // Логгер для разработки (вывод в консоль)
+	if err != nil {
+		panic(err) // В случае ошибки завершаем программу
+	}
 }
 
-func Logger(h http.Handler) http.Handler {
-
+// LoggerMiddleware — middleware для логирования HTTP-запросов
+func LoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		start := time.Now()
 
+		// Создаем обёртку для захвата статуса и размера ответа
 		responseData := &responseData{}
-
 		lw := loggingResponseWriter{
-			ResponseWriter: w, // встраиваем оригинальный http.ResponseWriter
+			ResponseWriter: w,
 			responseData:   responseData,
 		}
-		h.ServeHTTP(&lw, r) // внедряем реализацию http.ResponseWriter
 
-		logger.Sugar().Infoln(
-			"uri", r.RequestURI,
-			"method", r.Method,
-			"status", responseData.status, // получаем перехваченный код статуса ответа
-			"duration", time.Since(start),
-			"size", responseData.size, // получаем перехваченный размер ответа
-			"loc", w.Header().Get("Location"),
+		// Передаем управление следующему обработчику
+		next.ServeHTTP(&lw, r)
+
+		// Логируем информацию о запросе
+		Logger.Info("HTTP request",
+			zap.String("uri", r.RequestURI),
+			zap.String("method", r.Method),
+			zap.Int("status", responseData.status),
+			zap.Duration("duration", time.Since(start)),
+			zap.Int("size", responseData.size),
+			zap.String("location", w.Header().Get("Location")),
 		)
 	})
 }

@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
+	"github.com/GevorkovG/go-shortener-tlp/internal/services/usertoken"
 )
 
 type Req struct {
@@ -25,9 +27,20 @@ func (a *App) APIshortBatch(w http.ResponseWriter, r *http.Request) {
 		originals []Req
 		shorts    []Resp
 		links     []*objects.Link
+		userID    string
 	)
 
-	err := json.NewDecoder(r.Body).Decode(&originals)
+	token := r.Context().Value(cookies.SecretKey).(string)
+
+	userID, err := usertoken.GetUserID(token)
+	if err != nil {
+		userID = ""
+	}
+
+	//DEBUG--------------------------------------------------------------------------------------------------
+	log.Printf("BATCH userID %s token %s", userID, token)
+
+	err = json.NewDecoder(r.Body).Decode(&originals)
 	if err != nil {
 		log.Println("didn't decode body")
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -44,6 +57,7 @@ func (a *App) APIshortBatch(w http.ResponseWriter, r *http.Request) {
 		link := &objects.Link{
 			Short:    key,
 			Original: val.URL,
+			UserID:   userID,
 		}
 
 		shorts = append(shorts, resp)
@@ -51,8 +65,8 @@ func (a *App) APIshortBatch(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	if err := a.Storage.InsertLinks(links); err != nil {
-		log.Println("Didn't insert to table")
+	if err := a.Storage.InsertLinks(r.Context(), links); err != nil {
+		//		log.Println("Didn't insert to table")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

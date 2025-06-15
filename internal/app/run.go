@@ -8,8 +8,10 @@ import (
 	"strings"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
+	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
 	logg "github.com/GevorkovG/go-shortener-tlp/internal/log"
 	"github.com/go-chi/chi"
+	"go.uber.org/zap"
 )
 
 // compressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
@@ -128,21 +130,29 @@ func gzipMiddleware(h http.Handler) http.Handler {
 
 func Run() {
 	conf := config.NewCfg()
-	logg.InitLogger()
+	logg.InitLogger() // Инициализация логгера
+
+	// Логируем информацию о запуске сервера
+	logg.Logger.Info("Starting server",
+		zap.String("host", conf.Host),
+		zap.String("base_url", conf.ResultURL),
+	)
+
 	newApp := NewApp(conf)
-	newApp.ConfigureStorage()
 
 	r := chi.NewRouter()
 
-	r.Use(logg.Logger)
+	r.Use(logg.LoggerMiddleware) // Используем LoggerMiddleware
 	r.Use(gzipMiddleware)
+	r.Use(cookies.Cookies)
 
 	r.Post("/api/shorten", newApp.JSONGetShortURL)
 	r.Get("/{id}", newApp.GetOriginalURL)
 	r.Get("/ping", newApp.Ping)
 	r.Post("/", newApp.GetShortURL)
 	r.Post("/api/shorten/batch", newApp.APIshortBatch)
+	r.Get("/api/user/urls", newApp.APIGetUserURLs)
+	r.Delete("/api/user/urls", newApp.APIDeleteUserURLs)
 
 	log.Fatal(http.ListenAndServe(conf.Host, r))
-
 }
