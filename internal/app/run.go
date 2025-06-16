@@ -3,9 +3,10 @@ package app
 import (
 	"compress/gzip"
 	"io"
-	"log"
 	"net/http"
 	"strings"
+
+	_ "net/http/pprof"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
@@ -135,6 +136,7 @@ func Run() {
 	// Логируем информацию о запуске сервера
 	logg.Logger.Info("Starting server",
 		zap.String("host", conf.Host),
+		zap.String("pprof_host", "localhost:6060"),
 		zap.String("base_url", conf.ResultURL),
 	)
 
@@ -154,5 +156,18 @@ func Run() {
 	r.Get("/api/user/urls", newApp.APIGetUserURLs)
 	r.Delete("/api/user/urls", newApp.APIDeleteUserURLs)
 
-	log.Fatal(http.ListenAndServe(conf.Host, r))
+	go func() {
+		logg.Logger.Info("Starting pprof server", zap.String("address", ":6060"))
+		if err := http.ListenAndServe(":6060", nil); err != nil {
+			logg.Logger.Error("pprof server failed", zap.Error(err))
+		}
+	}()
+
+	logg.Logger.Info("Starting main server", zap.String("address", conf.Host))
+	if err := http.ListenAndServe(conf.Host, r); err != nil {
+		logg.Logger.Error("main server failed", zap.Error(err))
+	}
+
+	//go tool pprof http://localhost:6060/debug/pprof/profile
+
 }
