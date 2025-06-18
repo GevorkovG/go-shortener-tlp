@@ -1,3 +1,5 @@
+// Пакет storage предоставляет in-memory реализацию хранилища для сервиса сокращения URL.
+// Хранит данные в оперативной памяти без персистентности.
 package storage
 
 import (
@@ -9,11 +11,16 @@ import (
 	"go.uber.org/zap"
 )
 
+// InMemoryStorage реализует хранилище ссылок в оперативной памяти
 type InMemoryStorage struct {
 	urls    map[string]string // short -> original
 	userIDs map[string]string // short -> userID
 }
 
+// NewInMemoryStorage создает новое in-memory хранилище
+//
+// Возвращает:
+//   - *InMemoryStorage: инициализированное хранилище с пустыми мапами
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
 		urls:    make(map[string]string),
@@ -21,10 +28,29 @@ func NewInMemoryStorage() *InMemoryStorage {
 	}
 }
 
+// Load загружает данные в хранилище из переданной мапы
+//
+// Параметры:
+//   - data: маппинг short→original URL
+//
+// Особенности:
+//   - Полностью заменяет текущие данные
+//   - Не затрагивает информацию о пользователях
 func (s *InMemoryStorage) Load(data map[string]string) {
 	s.urls = data
 }
 
+// Insert добавляет новую ссылку в хранилище
+//
+// Параметры:
+//   - ctx: контекст выполнения
+//   - link: объект ссылки для добавления
+//
+// Возвращает:
+//   - error: всегда nil
+//
+// Логирует:
+//   - Информацию о добавляемой ссылке
 func (s *InMemoryStorage) Insert(ctx context.Context, link *objects.Link) error {
 	zap.L().Info("Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
 
@@ -37,6 +63,17 @@ func (s *InMemoryStorage) Insert(ctx context.Context, link *objects.Link) error 
 	return nil
 }
 
+// InsertLinks добавляет несколько ссылок атомарно
+//
+// Параметры:
+//   - ctx: контекст выполнения
+//   - links: массив ссылок для добавления
+//
+// Возвращает:
+//   - error: всегда nil (ошибки невозможны в текущей реализации)
+//
+// Логирует:
+//   - Начало и завершение операции
 func (s *InMemoryStorage) InsertLinks(ctx context.Context, links []*objects.Link) error {
 	zap.L().Info("MEMORY Inserting multiple URLs", zap.Any("links", links))
 
@@ -49,6 +86,14 @@ func (s *InMemoryStorage) InsertLinks(ctx context.Context, links []*objects.Link
 	return nil
 }
 
+// GetOriginal возвращает оригинальный URL по его сокращенной версии
+//
+// Параметры:
+//   - short: сокращенный URL
+//
+// Возвращает:
+//   - *objects.Link: найденная ссылка с userID
+//   - error: "short URL not found" если ссылка не существует
 func (s *InMemoryStorage) GetOriginal(short string) (*objects.Link, error) {
 	original, exists := s.urls[short]
 	//DEBUG--------------------------------------------------------------------------------------------------
@@ -64,6 +109,14 @@ func (s *InMemoryStorage) GetOriginal(short string) (*objects.Link, error) {
 	}, nil
 }
 
+// GetShort возвращает сокращенный URL по оригинальному
+//
+// Параметры:
+//   - original: оригинальный URL
+//
+// Возвращает:
+//   - *objects.Link: найденная ссылка с userID
+//   - error: "original URL not found" если ссылка не существует
 func (s *InMemoryStorage) GetShort(original string) (*objects.Link, error) {
 	for short, orig := range s.urls {
 		//DEBUG--------------------------------------------------------------------------------------------------
@@ -79,6 +132,14 @@ func (s *InMemoryStorage) GetShort(original string) (*objects.Link, error) {
 	return nil, errors.New("original URL not found")
 }
 
+// GetAllByUserID возвращает все ссылки принадлежащие указанному пользователю
+//
+// Параметры:
+//   - userID: идентификатор пользователя
+//
+// Возвращает:
+//   - []objects.Link: массив ссылок пользователя (может быть пустым)
+//   - error: всегда nil
 func (s *InMemoryStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
 	zap.L().Info("Getting URLs for user", zap.String("userID", userID))
 	//DEBUG--------------------------------------------------------------------------------------------------
@@ -106,6 +167,20 @@ func (s *InMemoryStorage) GetAllByUserID(userID string) ([]objects.Link, error) 
 	return userLinks, nil
 }
 
+// MarkAsDeleted помечает ссылку как удаленную
+//
+// Параметры:
+//   - userID: идентификатор пользователя
+//   - short: сокращенный URL
+//
+// Возвращает:
+//   - error: "URL not found or user mismatch" если:
+//   - ссылка не найдена
+//   - ссылка принадлежит другому пользователю
+//
+// Особенности:
+//   - Устанавливает original URL в пустую строку
+//   - Сохраняет userID
 func (s *InMemoryStorage) MarkAsDeleted(userID string, short string) error {
 	if s.userIDs[short] == userID {
 		s.urls[short] = ""        // Помечаем URL как удаленный
@@ -115,6 +190,7 @@ func (s *InMemoryStorage) MarkAsDeleted(userID string, short string) error {
 	return errors.New("URL not found or user mismatch")
 }
 
+// Ping проверяет доступность хранилища
 func (s *InMemoryStorage) Ping() error {
 	return nil
 }

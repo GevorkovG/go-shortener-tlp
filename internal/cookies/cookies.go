@@ -1,3 +1,5 @@
+// Пакет cookies предоставляет функционал для работы с JWT-аутентификацией
+// через HTTP cookies.
 package cookies
 
 import (
@@ -10,18 +12,36 @@ import (
 	"go.uber.org/zap"
 )
 
+// contextKey тип для ключей контекста (обертывает string)
 type contextKey string
 
+// Claims представляет кастомные JWT-claims с идентификатором пользователя.
+// Наследует стандартные зарегистрированные claims JWT
 type Claims struct {
 	jwt.RegisteredClaims
-	UserID string
+	UserID string // Уникальный идентификатор пользователя
 }
 
 const (
-	TokenExp             = time.Hour * 3
+	// TokenExp - время жизни JWT токена (3 часа)
+	TokenExp = time.Hour * 3
+
+	// SecretKey ключ для доступа к данным в контексте
 	SecretKey contextKey = "supersecretkey"
 )
 
+// BuildJWTString создает JWT токен для указанного пользователя.
+//
+// Параметры:
+//   - userID: строка с идентификатором пользователя
+//
+// Возвращает:
+//   - string: подписанный JWT токен
+//   - error: ошибка если не удалось подписать токен
+//
+// Пример использования:
+//
+//	token, err := BuildJWTString("123e4567-e89b-12d3-a456-426614174000")
 func BuildJWTString(userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -38,6 +58,18 @@ func BuildJWTString(userID string) (string, error) {
 	return tokenString, nil
 }
 
+// GetUserID извлекает идентификатор пользователя из JWT токена.
+//
+// Параметры:
+//   - tokenString: строка с JWT токеном
+//
+// Возвращает:
+//   - string: идентификатор пользователя
+//   - error: ошибка если токен невалидный или не содержит UserID
+//
+// Пример использования:
+//
+//	userID, err := GetUserID("eyJhbGciOiJIUzI1NiIsI...")
 func GetUserID(tokenString string) (string, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
@@ -50,6 +82,21 @@ func GetUserID(tokenString string) (string, error) {
 	return claims.UserID, nil
 }
 
+// Cookies middleware для обработки аутентификации через JWT в cookies.
+//
+// Функционал:
+//   - Проверяет наличие валидного токена в cookie "token"
+//   - Если токен валиден - извлекает UserID
+//   - Если токена нет/невалиден - генерирует новый UserID и токен
+//   - Добавляет UserID в контекст запроса
+//   - Устанавливает cookie с токеном для новых пользователей
+//
+// Возможные ошибки:
+//   - 500 Internal Server Error при ошибке генерации токена
+//
+// Пример использования:
+//
+//	router.Use(Cookies)
 func Cookies(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var userID string

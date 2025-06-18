@@ -13,7 +13,13 @@ type Claims struct {
 	UserID string
 }
 
+// TokenExp определяет срок действия JWT токена.
+// Текущее значение - 3 часа.
 const TokenExp = time.Hour * 3
+
+// SecretKey содержит секретный ключ для подписи JWT токенов.
+// ВНИМАНИЕ: В production среде должен заменяться на значение из защищенного
+// хранилища (environment variables, secret manager и т.п.)
 const SecretKey = "sHoRtEnEr"
 
 // BuildJWTString создаёт токен и возвращает его в виде строки.

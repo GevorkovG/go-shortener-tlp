@@ -1,3 +1,5 @@
+// Пакет storage предоставляет файловую реализацию хранилища для сервиса сокращения URL.
+// Сочетает in-memory хранилище с персистентностью в файле.
 package storage
 
 import (
@@ -11,11 +13,23 @@ import (
 	"go.uber.org/zap"
 )
 
+// FileStorage реализует хранилище ссылок с сохранением в файл
 type FileStorage struct {
 	memStorage *InMemoryStorage
 	filePATH   string
 }
 
+// NewFileStorage создает новое файловое хранилище
+//
+// Параметры:
+//   - path: путь к файлу для хранения данных
+//
+// Возвращает:
+//   - *FileStorage: инициализированное хранилище
+//
+// Особенности:
+//   - Автоматически загружает данные из файла при создании
+//   - Создает файл если он не существует
 func NewFileStorage(path string) *FileStorage {
 	fs := FileStorage{
 		memStorage: NewInMemoryStorage(),
@@ -26,6 +40,7 @@ func NewFileStorage(path string) *FileStorage {
 	return &fs
 }
 
+// ConfigureFileStorage загружает данные из файла в память при инициализации
 func (fs *FileStorage) ConfigureFileStorage() {
 
 	data, err := LoadFromFile(fs.filePATH)
@@ -37,6 +52,18 @@ func (fs *FileStorage) ConfigureFileStorage() {
 	fs.Load(data)
 }
 
+// SaveToFile сохраняет одну ссылку в файл
+//
+// Параметры:
+//   - fs: ссылка для сохранения
+//   - fileName: путь к файлу
+//
+// Возвращает:
+//   - error: ошибка при сохранении
+//
+// Особенности:
+//   - Добавляет данные в конец файла
+//   - Использует JSON-кодирование
 func SaveToFile(fs *objects.Link, fileName string) error {
 
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
@@ -49,6 +76,14 @@ func SaveToFile(fs *objects.Link, fileName string) error {
 	return err
 }
 
+// AllSaveToFile сохраняет массив ссылок в файл
+//
+// Параметры:
+//   - links: массив ссылок
+//   - fileName: путь к файлу
+//
+// Возвращает:
+//   - error: ошибка при сохранении
 func AllSaveToFile(links []*objects.Link, fileName string) error {
 
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
@@ -63,6 +98,18 @@ func AllSaveToFile(links []*objects.Link, fileName string) error {
 	return err
 }
 
+// LoadFromFile загружает данные из файла
+//
+// Параметры:
+//   - fileName: путь к файлу
+//
+// Возвращает:
+//   - map[string]string: маппинг short→original URL
+//   - error: ошибка при загрузке
+//
+// Особенности:
+//   - Создает файл если он не существует
+//   - Пропускает некорректные записи с логированием ошибок
 func LoadFromFile(fileName string) (map[string]string, error) {
 
 	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0666)
@@ -92,6 +139,18 @@ func (fs *FileStorage) Load(data map[string]string) {
 	fs.memStorage.Load(data)
 }
 
+// Insert добавляет новую ссылку в хранилище
+//
+// Параметры:
+//   - ctx: контекст
+//   - link: ссылка для добавления
+//
+// Возвращает:
+//   - error: ошибка при сохранении
+//
+// Логирует:
+//   - Информацию о добавляемой ссылке
+//   - Успешное завершение операции
 func (fs *FileStorage) Insert(ctx context.Context, link *objects.Link) error {
 	zap.L().Info("FILE Inserting URL", zap.String("short", link.Short), zap.String("original", link.Original), zap.String("userID", link.UserID))
 
@@ -109,6 +168,14 @@ func (fs *FileStorage) Insert(ctx context.Context, link *objects.Link) error {
 	return nil
 }
 
+// InsertLinks добавляет несколько ссылок
+//
+// Параметры:
+//   - ctx: контекст
+//   - links: массив ссылок
+//
+// Возвращает:
+//   - error: ошибка при сохранении
 func (fs *FileStorage) InsertLinks(ctx context.Context, links []*objects.Link) error {
 
 	err := fs.memStorage.InsertLinks(ctx, links)
@@ -122,6 +189,18 @@ func (fs *FileStorage) InsertLinks(ctx context.Context, links []*objects.Link) e
 	return err
 }
 
+// GetOriginal возвращает оригинальный URL по сокращенному
+//
+// Параметры:
+//   - short: сокращенный URL
+//
+// Возвращает:
+//   - *objects.Link: найденная ссылка
+//   - error: ошибка при поиске
+//
+// Логирует:
+//   - Ошибки поиска
+//   - Успешное выполнение
 func (fs *FileStorage) GetOriginal(short string) (*objects.Link, error) {
 	link, err := fs.memStorage.GetOriginal(short)
 	if err != nil {
@@ -134,6 +213,14 @@ func (fs *FileStorage) GetOriginal(short string) (*objects.Link, error) {
 	return link, nil
 }
 
+// GetShort возвращает сокращенный URL по оригинальному
+//
+// Параметры:
+//   - original: оригинальный URL
+//
+// Возвращает:
+//   - *objects.Link: найденная ссылка
+//   - error: ошибка при поиске
 func (fs *FileStorage) GetShort(original string) (*objects.Link, error) {
 
 	link, err := fs.memStorage.GetShort(original)
@@ -145,6 +232,18 @@ func (fs *FileStorage) GetShort(original string) (*objects.Link, error) {
 	return link, nil
 }
 
+// GetAllByUserID возвращает все ссылки пользователя
+//
+// Параметры:
+//   - userID: идентификатор пользователя
+//
+// Возвращает:
+//   - []objects.Link: массив ссылок
+//   - error: ошибка при поиске
+//
+// Логирует:
+//   - Начало и завершение операции
+//   - Результаты поиска
 func (fs *FileStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
 	zap.L().Info("Getting URLs for user", zap.String("userID", userID))
 	userLinks := make([]objects.Link, 0, len(fs.memStorage.urls))
@@ -171,6 +270,14 @@ func (fs *FileStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
 	return userLinks, nil
 }
 
+// MarkAsDeleted помечает ссылку как удаленную
+//
+// Параметры:
+//   - userID: идентификатор пользователя
+//   - short: сокращенный URL
+//
+// Возвращает:
+//   - error: ошибка если ссылка не найдена или не принадлежит пользователю
 func (fs *FileStorage) MarkAsDeleted(userID string, short string) error {
 	if fs.memStorage.userIDs[short] == userID {
 		fs.memStorage.urls[short] = ""        // Помечаем URL как удаленный
@@ -180,6 +287,7 @@ func (fs *FileStorage) MarkAsDeleted(userID string, short string) error {
 	return errors.New("URL not found or user mismatch")
 }
 
+// Ping проверяет доступность хранилища
 func (fs *FileStorage) Ping() error {
 	return nil
 }
