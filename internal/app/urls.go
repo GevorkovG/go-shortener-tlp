@@ -12,11 +12,30 @@ import (
 	"go.uber.org/zap"
 )
 
+// RespURLs представляет структуру ответа с URL для API.
+// Используется для сериализации в JSON при возврате списка URL пользователя.
 type RespURLs struct {
 	Short    string `json:"short_url"`
 	Original string `json:"original_url"`
 }
 
+// APIGetUserURLs возвращает все URL, созданные текущим пользователем.
+//
+// Метод требует аутентификации - userID должен быть в контексте запроса.
+// Возвращает:
+// - 200 OK с массивом URL в формате JSON при успехе
+// - 204 No Content если у пользователя нет сохраненных URL
+// - 401 Unauthorized если пользователь не аутентифицирован
+// - 500 Internal Server Error при ошибках сервера
+//
+// Пример успешного ответа:
+//
+//	[
+//	  {
+//	    "short_url": "http://short.ru/abc",
+//	    "original_url": "https://original.com/long"
+//	  }
+//	]
 func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	// Извлекаем userID из контекста
 	userID, ok := r.Context().Value(cookies.SecretKey).(string)
@@ -71,6 +90,19 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// APIDeleteUserURLs асинхронно удаляет указанные URL пользователя.
+//
+// Принимает массив сокращенных URL в теле запроса (JSON).
+// Удаление происходит асинхронно с использованием паттерна FanOut/FanIn.
+// Возвращает:
+// - 202 Accepted если запрос принят в обработку
+// - 401 Unauthorized если пользователь не аутентифицирован
+// - 400 Bad Request при неверном формате запроса
+//
+// Особенности:
+// - URL удаляются в нескольких горутинах для повышения производительности
+// - Ответ возвращается сразу после принятия запроса, не дожидаясь завершения удаления
+// - Результаты удаления логируются
 func (a *App) APIDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 	var shortURLs []string
 	userID, ok := r.Context().Value(cookies.SecretKey).(string)
