@@ -135,6 +135,7 @@ func LoadFromFile(fileName string) (map[string]string, error) {
 	return data, nil
 }
 
+// Load загружает предварительно сохраненные данные в in-memory хранилище
 func (fs *FileStorage) Load(data map[string]string) {
 	fs.memStorage.Load(data)
 }

@@ -22,6 +22,7 @@ type Claims struct {
 	UserID string // Уникальный идентификатор пользователя
 }
 
+// Константы
 const (
 	// TokenExp - время жизни JWT токена (3 часа)
 	TokenExp = time.Hour * 3
