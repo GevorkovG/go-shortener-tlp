@@ -15,6 +15,12 @@ const (
 )
 */
 
+// AppConfig содержит конфигурационные параметры приложения.
+// Поля структуры:
+//   - Host: адрес сервера (env:"SERVER_ADDRESS")
+//   - ResultURL: базовый URL для сокращенных ссылок (env:"BASE_URL")
+//   - FilePATH: путь к файлу хранилища (env:"FILE_STORAGE_PATH")
+//   - DataBaseString: строка подключения к БД (env:"DATABASE_DSN")
 type AppConfig struct {
 	Host           string `env:"SERVER_ADDRESS"`
 	ResultURL      string `env:"BASE_URL"`

@@ -22,6 +22,8 @@ type compressWriter struct {
 	zw *gzip.Writer
 }
 
+// compressWriter реализует интерфейс http.ResponseWriter с поддержкой gzip-сжатия.
+// Автоматически применяет сжатие для успешных ответов (statusCode < 300).
 func newCompressWriter(w http.ResponseWriter) *compressWriter {
 	return &compressWriter{
 		w:  w,
@@ -29,14 +31,37 @@ func newCompressWriter(w http.ResponseWriter) *compressWriter {
 	}
 }
 
+// Header возвращает HTTP-заголовки ответа.
+// Позволяет получать и модифицировать заголовки до записи тела ответа.
+//
+// Возвращает:
+//   - http.Header: map-подобную структуру с заголовками ответа
 func (c *compressWriter) Header() http.Header {
 	return c.w.Header()
 }
 
+// Write записывает сжатые данные в ответ.
+// Автоматически применяет gzip-сжатие если статус ответа < 300.
+//
+// Параметры:
+//   - p []byte: данные для записи
+//
+// Возвращает:
+//   - int: количество записанных байт
+//   - error: ошибка записи (если возникла)
 func (c *compressWriter) Write(p []byte) (int, error) {
 	return c.zw.Write(p)
 }
 
+// WriteHeader устанавливает код статуса HTTP ответа.
+// Автоматически добавляет заголовок Content-Encoding: gzip для успешных ответов (statusCode < 300).
+//
+// Параметры:
+//   - statusCode int: HTTP статус-код ответа
+//
+// Особенности:
+//   - Заголовок Content-Encoding устанавливается только для успешных ответов
+//   - Реальные заголовки записываются в нижележащий ResponseWriter
 func (c *compressWriter) WriteHeader(statusCode int) {
 	if statusCode < 300 {
 		c.w.Header().Set("Content-Encoding", "gzip")
@@ -44,7 +69,12 @@ func (c *compressWriter) WriteHeader(statusCode int) {
 	c.w.WriteHeader(statusCode)
 }
 
-// Close закрывает gzip.Writer и досылает все данные из буфера.
+// Close завершает операцию gzip-сжатия и освобождает ресурсы.
+//
+// Этот метод:
+//   - Завершает запись сжатых данных
+//   - Обеспечивает корректное завершение gzip-потока
+//   - Освобождает ресурсы, связанные с компрессором
 func (c *compressWriter) Close() error {
 	return c.zw.Close()
 }
@@ -56,6 +86,7 @@ type compressReader struct {
 	zr *gzip.Reader
 }
 
+// newCompressReader создает новый экземпляр compressReader для чтения сжатых gzip данных.
 func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
@@ -68,10 +99,41 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
+// Read читает и распаковывает данные из сжатого потока.
+//
+// Параметры:
+//   - p []byte: буфер для записи распакованных данных
+//
+// Возвращает:
+//   - n int: количество прочитанных байт
+//   - err error: ошибка чтения, включая:
+//   - io.EOF при завершении потока
+//   - gzip.ErrHeader при неверном формате gzip
+//   - другие ошибки ввода-вывода
+//
+// Особенности:
+//   - Данные автоматически распаковываются при чтении
+//   - Сохраняет семантику стандартного io.Reader
+//   - Может возвращать 0, nil при ожидании данных
 func (c compressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
 }
 
+// Close освобождает ресурсы и закрывает оба потока:
+//   - Нижележащий источник данных (io.ReadCloser)
+//   - Gzip-распаковщик (*gzip.Reader)
+//
+// Возвращает:
+//   - error: первая возникшая ошибка закрытия
+//
+// Гарантии:
+//   - Всегда пытается закрыть оба потока, даже при ошибках
+//   - Возвращает первую обнаруженную ошибку
+//   - Последующие вызовы Read после Close возвращают ошибку
+//
+// Рекомендации:
+//   - Всегда должен вызываться через defer после создания
+//   - Не безопасен для конкурентного вызова
 func (c *compressReader) Close() error {
 	if err := c.r.Close(); err != nil {
 		return err
@@ -129,6 +191,45 @@ func gzipMiddleware(h http.Handler) http.Handler {
 	})
 }
 
+// Run инициализирует и запускает HTTP-сервер сокращения URL с полной конфигурацией.
+// Функция выполняет:
+//   - Загрузку конфигурации
+//   - Инициализацию логгера
+//   - Настройку роутера с middleware
+//   - Запуск основного сервера
+//   - Запуск pprof сервера для профилирования
+//
+// Конфигурация:
+//   - Использует флаги командной строки и переменные окружения
+//   - Логирует параметры при старте
+//
+// Middleware:
+//   - Логирование запросов (LoggerMiddleware)
+//   - Поддержка gzip сжатия (gzipMiddleware)
+//   - Обработка cookies (cookies.Cookies)
+//
+// Роуты:
+//
+//	POST /api/shorten       - Сокращение URL через JSON API (JSONGetShortURL)
+//	GET  /{id}              - Получение оригинального URL (GetOriginalURL)
+//	GET  /ping              - Проверка доступности сервера (Ping)
+//	POST /                  - Сокращение URL через форму (GetShortURL)
+//	POST /api/shorten/batch - Пакетное сокращение URL (APIshortBatch)
+//	GET  /api/user/urls     - Получение URL пользователя (APIGetUserURLs)
+//	DELETE /api/user/urls   - Удаление URL пользователя (APIDeleteUserURLs)
+//
+// Особенности:
+//   - Запускает параллельный pprof сервер на :6060
+//   - Детально логирует параметры старта
+//   - Использует zap для структурированного логгирования
+//
+// Пример запуска:
+//
+//	go run ./cmd/shortener/main.go
+//
+// Для профилирования:
+//
+//	go tool pprof http://localhost:6060/debug/pprof/profile
 func Run() {
 	conf := config.NewCfg()
 	logg.InitLogger() // Инициализация логгера
@@ -167,7 +268,5 @@ func Run() {
 	if err := http.ListenAndServe(conf.Host, r); err != nil {
 		logg.Logger.Error("main server failed", zap.Error(err))
 	}
-
-	//go tool pprof http://localhost:6060/debug/pprof/profile
 
 }

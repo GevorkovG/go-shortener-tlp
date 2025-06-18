@@ -9,6 +9,10 @@ import (
 	"github.com/GevorkovG/go-shortener-tlp/internal/storage"
 )
 
+// App представляет основное приложение с его зависимостями.
+// Содержит:
+//   - Конфигурацию приложения
+//   - Хранилище данных
 type App struct {
 	cfg     *config.AppConfig
 	Storage objects.Storage
@@ -16,6 +20,8 @@ type App struct {
 
 type contextKey string
 
+// Token - ключ контекста для хранения и извлечения токена аутентификации.
+// Используется в middleware и обработчиках для передачи токена между слоями приложения.
 const Token contextKey = "token"
 
 // NewApp создает и инициализирует новый экземпляр приложения с заданной конфигурацией.
