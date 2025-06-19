@@ -1,4 +1,4 @@
-package api_test
+package app_test
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func ExamplePing() {
+func ExampleApp_Ping() {
 	// Инициализация конфигурации
 	cfg := &config.AppConfig{
 		Host:      "localhost:8080",
@@ -22,9 +22,13 @@ func ExamplePing() {
 	// Создание приложения
 	app := app.NewApp(cfg)
 
-	// Создаем chi роутер и добавляем обработчик ping
+	// Создаем chi роутер
 	r := chi.NewRouter()
-	r.Get("/ping", app.Ping)
+
+	// Добавляем обработчик ping (предполагая, что у app есть метод Ping)
+	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+		app.Ping(w, r) // Используем существующий метод Ping
+	})
 
 	// Создаем тестовый HTTP-сервер
 	ts := httptest.NewServer(r)
@@ -37,11 +41,8 @@ func ExamplePing() {
 		return
 	}
 
-	// Добавляем контекст с userID
+	// Добавляем необходимые контексты
 	ctx := context.WithValue(req.Context(), cookies.SecretKey, "test-user-id")
-	req = req.WithContext(ctx)
-
-	// Добавляем chi router context
 	routerCtx := chi.NewRouteContext()
 	req = req.WithContext(context.WithValue(ctx, chi.RouteCtxKey, routerCtx))
 
