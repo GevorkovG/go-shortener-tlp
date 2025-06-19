@@ -32,28 +32,99 @@ func generateID() string {
 	return encodedBuilder.String()
 }
 
+// Request представляет входящий запрос на сокращение URL.
+// Используется в JSON API эндпоинтах.
+//
+// Поля:
+//   - URL string `json:"url"`: оригинальный URL для сокращения.
+//
+// Пример:
+//
+//	{
+//	  "url": "https://example.com/very/long/url"
+//	}
 type Request struct {
 	URL string `json:"url"`
 }
 
+// Response представляет ответ сервера с сокращенным URL.
+// Возвращается клиенту при успешном сокращении.
+//
+// Поля:
+//   - Result string `json:"result"`: сокращенный URL в формате:
+//     http(s)://<домен>/<короткий-идентификатор>
+//
+// Пример:
+//
+//	{
+//	  "result": "http://short.ly/abc123"
+//	}
 type Response struct {
 	Result string `json:"result"`
 }
 
+// JSONGetShortURL обрабатывает запрос на сокращение URL в JSON формате.
+// Эндпоинт: POST /api/shorten
+//
+// Входные данные (Request):
+//
+//	{
+//	  "url": "string"  // URL для сокращения (обязательное поле)
+//	}
+//
+// Возможные ответы:
+//   - 201 Created: URL успешно сокращен
+//     {
+//     "result": "string"  // сокращенный URL
+//     }
+//   - 400 Bad Request: невалидный JSON или URL
+//   - 409 Conflict: URL уже был сокращен ранее
+//   - 500 Internal Server Error: ошибка сервера
+//
+// Логика работы:
+//  1. Извлекает UserID из токена аутентификации (если есть)
+//  2. Проверяет валидность входного JSON
+//  3. Генерирует уникальный идентификатор для URL
+//  4. Сохраняет связь URL-идентификатор в хранилище:
+//     - Если URL уже существует, возвращает существующий сокращенный URL
+//  5. Возвращает сокращенный URL в формате: {базовый_URL}/{идентификатор}
+//
+// Пример запроса:
+//
+//	POST /api/shorten
+//	Content-Type: application/json
+//	Authorization: Bearer <token>
+//
+//	{"url": "https://example.com/very/long/path"}
+//
+// Пример ответа:
+//
+//	HTTP/1.1 201 Created
+//	Content-Type: application/json
+//
+//	{"result": "http://short.ly/abc123"}
+//
+// Особенности:
+//   - Поддерживает аутентификацию через токен
+//   - Автоматически обрабатывает конфликты (дубликаты URL)
+//   - Логирует все ошибки и предупреждения
+//   - Возвращает полный URL (с базовым доменом)
 func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	var req Request
 	var status = http.StatusCreated
 	var UserID string
 
 	// Извлекаем UserID из контекста
-	token := r.Context().Value(cookies.SecretKey)
-	if token != nil {
+	if token, ok := r.Context().Value(cookies.SecretKey).(string); ok {
 		var err error
-		UserID, err = usertoken.GetUserID(token.(string))
-		if err != nil {
-			zap.L().Warn("Failed to get UserID from token, proceeding without it", zap.Error(err))
+		if UserID, err = usertoken.GetUserID(token); err != nil {
+			zap.L().Warn("Failed to get UserID from token", zap.Error(err))
 			UserID = ""
 		}
+	} else {
+		zap.L().Warn("Token not found or not a string",
+			zap.Any("token", r.Context().Value(cookies.SecretKey)))
+		UserID = ""
 	}
 
 	// Декодируем тело запроса
@@ -109,6 +180,25 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetShortURL обрабатывает запросы на создание коротких URL.
+//
+// Метод ожидает POST-запрос с оригинальным URL в теле запроса.
+// При успешном выполнении возвращает сокращенный URL со статусом 201 (Created).
+// Если URL уже существует, возвращает существующий сокращенный URL со статусом 409 (Conflict).
+// Требуется аутентификация пользователя через контекст (userID может быть пустым для неавторизованных пользователей).
+//
+// Пример запроса:
+//
+//	POST /api/shorten
+//	Тело запроса: "https://example.com"
+//
+// Пример ответа:
+//
+//	"http://short.url/abc123" (Статус 201 или 409)
+//
+// Возможные ошибки:
+//   - 400: Неверный формат запроса или пустое тело
+//   - 500: Внутренняя ошибка сервера
 func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	var status = http.StatusCreated
 
@@ -120,8 +210,9 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		userID = "" // Устанавливаем пустой UserID
 	}
 
-	//DEBUG--------------------------------------------------------------------------------------------------
-	log.Printf("internal/app/shortener.go  UserID: %s ", userID)
+	zap.L().Debug("internal/app/shortener.go ",
+		zap.String("userID", userID),
+	)
 
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -139,8 +230,11 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		UserID:   userID, // Устанавливаем UserID
 	}
 
-	//DEBUG--------------------------------------------------------------------------------------------------
-	log.Printf("internal/app/shortener.go GetShortURL Original:%s UserID:%s Short: %s", link.Original, link.UserID, link.Short)
+	zap.L().Debug("internal/app/shortener.go GetShortURL",
+		zap.String("userID", link.UserID),
+		zap.String("short", link.Short),
+		zap.String("original", link.Original),
+	)
 
 	if err = a.Storage.Insert(r.Context(), link); err != nil {
 		if errors.Is(err, storage.ErrConflict) {
@@ -169,6 +263,24 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetOriginalURL обрабатывает запросы на перенаправление по короткому URL.
+//
+// При успешном выполнении возвращает 307 (Temporary Redirect) с Location на оригинальный URL.
+// Если URL помечен как удаленный, возвращает 410 (Gone).
+// Если URL не найден, возвращает 400 (Bad Request).
+//
+// Пример запроса:
+//
+//	GET /abc123
+//
+// Пример ответа:
+//
+//	Заголовок Location: "https://example.com"
+//	Статус: 307
+//
+// Возможные ошибки:
+//   - 400: Неверный идентификатор короткого URL
+//   - 410: URL был удален
 func (a *App) GetOriginalURL(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -190,6 +302,17 @@ func (a *App) GetOriginalURL(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
+// Ping проверяет доступность хранилища.
+//
+// Возвращает 200 (OK) если хранилище доступно, 500 (Internal Server Error) в противном случае.
+//
+// Пример запроса:
+//
+//	GET /ping
+//
+// Пример ответа:
+//
+//	Статус: 200 OK или 500 Internal Server Error
 func (a *App) Ping(w http.ResponseWriter, _ *http.Request) {
 	if err := a.Storage.Ping(); err != nil {
 		log.Println("Storage ping failed:", err)
