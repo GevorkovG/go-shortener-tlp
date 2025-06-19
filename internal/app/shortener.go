@@ -115,14 +115,16 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 	var UserID string
 
 	// Извлекаем UserID из контекста
-	token := r.Context().Value(cookies.SecretKey)
-	if token != nil {
+	if token, ok := r.Context().Value(cookies.SecretKey).(string); ok {
 		var err error
-		UserID, err = usertoken.GetUserID(token.(string))
-		if err != nil {
-			zap.L().Warn("Failed to get UserID from token, proceeding without it", zap.Error(err))
+		if UserID, err = usertoken.GetUserID(token); err != nil {
+			zap.L().Warn("Failed to get UserID from token", zap.Error(err))
 			UserID = ""
 		}
+	} else {
+		zap.L().Warn("Token not found or not a string",
+			zap.Any("token", r.Context().Value(cookies.SecretKey)))
+		UserID = ""
 	}
 
 	// Декодируем тело запроса
@@ -208,8 +210,9 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		userID = "" // Устанавливаем пустой UserID
 	}
 
-	//DEBUG--------------------------------------------------------------------------------------------------
-	log.Printf("internal/app/shortener.go  UserID: %s ", userID)
+	zap.L().Debug("internal/app/shortener.go ",
+		zap.String("userID", userID),
+	)
 
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -227,8 +230,11 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 		UserID:   userID, // Устанавливаем UserID
 	}
 
-	//DEBUG--------------------------------------------------------------------------------------------------
-	log.Printf("internal/app/shortener.go GetShortURL Original:%s UserID:%s Short: %s", link.Original, link.UserID, link.Short)
+	zap.L().Debug("internal/app/shortener.go GetShortURL",
+		zap.String("userID", link.UserID),
+		zap.String("short", link.Short),
+		zap.String("original", link.Original),
+	)
 
 	if err = a.Storage.Insert(r.Context(), link); err != nil {
 		if errors.Is(err, storage.ErrConflict) {

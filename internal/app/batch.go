@@ -9,6 +9,7 @@ import (
 	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 	"github.com/GevorkovG/go-shortener-tlp/internal/services/usertoken"
+	"go.uber.org/zap"
 )
 
 // Req представляет структуру входящего запроса для пакетного создания сокращенных URL.
@@ -92,12 +93,17 @@ type Resp struct {
 //   - Валидирует входные данные перед обработкой
 func (a *App) APIshortBatch(w http.ResponseWriter, r *http.Request) {
 
-	var (
-		originals []Req
-		shorts    []Resp
-		links     []*objects.Link
-		userID    string
-	)
+	var originals []Req
+
+	err := json.NewDecoder(r.Body).Decode(&originals)
+	if err != nil {
+		log.Println("didn't decode body")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	shorts := make([]Resp, 0, len(originals))
+	links := make([]*objects.Link, 0, len(originals))
 
 	token := r.Context().Value(cookies.SecretKey).(string)
 
@@ -106,15 +112,10 @@ func (a *App) APIshortBatch(w http.ResponseWriter, r *http.Request) {
 		userID = ""
 	}
 
-	//DEBUG--------------------------------------------------------------------------------------------------
-	log.Printf("BATCH userID %s token %s", userID, token)
-
-	err = json.NewDecoder(r.Body).Decode(&originals)
-	if err != nil {
-		log.Println("didn't decode body")
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	zap.L().Debug("internal/app/batsh.go",
+		zap.String("userID", userID),
+		zap.String("token", token),
+	)
 
 	for _, val := range originals {
 

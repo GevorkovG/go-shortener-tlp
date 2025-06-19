@@ -40,8 +40,10 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	// Извлекаем userID из контекста
 	userID, ok := r.Context().Value(cookies.SecretKey).(string)
 
-	//DEBUG--------------------------------------------------------------------------------------------------
-	log.Printf("internal/app/urls.go  APIGetUserURLs %t userID %s", userID == "", userID)
+	zap.L().Debug("internal/app/urls.go APIGetUserURLs",
+		zap.Bool("empty UserID?", userID == ""),
+		zap.String("userID", userID),
+	)
 
 	if !ok || userID == "" {
 		zap.L().Warn("Unauthorized access attempt")
@@ -65,8 +67,10 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	// Логируем количество найденных URL
 	zap.L().Info("Number of URLs found", zap.Int("count", len(userURLs)))
 
-	//DEBUG--------------------------------------------------------------------------------------------------
-	log.Printf("userID %s, Number of URLs found %d", userID, len(userURLs))
+	zap.L().Debug("internal/app/urls.go APIGetUserURLs",
+		zap.String("userID", userID),
+		zap.Int("Number of URLs found", len(userURLs)),
+	)
 
 	if len(userURLs) == 0 {
 		zap.L().Info("No URLs found for user", zap.String("userID", userID))
@@ -75,7 +79,7 @@ func (a *App) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Формируем ответ
-	var links []RespURLs
+	links := make([]RespURLs, 0, len(userURLs))
 	for _, val := range userURLs {
 		links = append(links, RespURLs{
 			Short:    strings.TrimSpace(a.cfg.ResultURL + "/" + val.Short),

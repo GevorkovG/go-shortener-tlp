@@ -25,7 +25,7 @@ func ExampleApp_Ping() {
 	// Создаем chi роутер
 	r := chi.NewRouter()
 
-	// Добавляем обработчик ping (предполагая, что у app есть метод Ping)
+	// Добавляем обработчик ping
 	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
 		app.Ping(w, r) // Используем существующий метод Ping
 	})
