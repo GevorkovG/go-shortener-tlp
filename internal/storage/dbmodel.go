@@ -1,3 +1,5 @@
+// Пакет storage предоставляет реализацию хранилища для сервиса сокращения URL
+// с использованием PostgreSQL в качестве бэкенда.
 package storage
 
 import (
@@ -12,12 +14,15 @@ import (
 	"go.uber.org/zap"
 )
 
+// ErrConflict возвращается при попытке вставить дубликат URL
 var ErrConflict = errors.New("conflict on inserting new record")
 
+// Link реализует интерфейс Storage для работы с PostgreSQL
 type Link struct {
-	Store *database.DBStore
+	Store *database.DBStore // Подключение к базе данных
 }
 
+// NewLinkStorage создает новый экземпляр хранилища для работы с ссылками
 func NewLinkStorage(db *database.DBStore) *Link {
 	return &Link{
 		Store: db,
@@ -32,6 +37,13 @@ func IsDeleted(link *objects.Link) bool {
 	return link.Original == ""
 }
 
+// CreateTable создает таблицу links если она не существует
+//
+// Параметры:
+//   - ctx: контекст выполнения
+//
+// Возвращает:
+//   - error: ошибка при создании таблицы
 func (l *Link) CreateTable(ctx context.Context) error {
 	if _, err := l.Store.DB.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS links (id SERIAL PRIMARY KEY, short CHAR(20) UNIQUE, original CHAR(255) UNIQUE, userid CHAR(36), is_deleted BOOLEAN DEFAULT FALSE);"); err != nil {
 		zap.L().Error("Failed to create table", zap.Error(err))
@@ -40,6 +52,20 @@ func (l *Link) CreateTable(ctx context.Context) error {
 	return nil
 }
 
+// Insert добавляет новую ссылку в хранилище
+//
+// Параметры:
+//   - ctx: контекст выполнения
+//   - link: объект ссылки для добавления
+//
+// Возвращает:
+//   - ErrConflict: если ссылка уже существует
+//   - error: другие ошибки базы данных
+//
+// Логирует:
+//   - Информацию о добавляемой ссылке
+//   - Конфликты при вставке
+//   - Успешное завершение операции
 func (l *Link) Insert(ctx context.Context, link *objects.Link) error {
 	zap.L().Info("DB Inserting URL",
 		zap.String("short", link.Short),
@@ -73,6 +99,18 @@ func (l *Link) Insert(ctx context.Context, link *objects.Link) error {
 	return nil
 }
 
+// InsertLinks добавляет несколько ссылок в рамках транзакции
+//
+// Параметры:
+//   - ctx: контекст выполнения
+//   - links: массив ссылок для добавления
+//
+// Возвращает:
+//   - error: ошибка при выполнении транзакции
+//
+// Особенности:
+//   - Использует транзакцию для атомарности
+//   - Прерывается при первой же ошибке
 func (l *Link) InsertLinks(ctx context.Context, links []*objects.Link) error {
 	if err := l.CreateTable(ctx); err != nil {
 		return err
@@ -107,6 +145,17 @@ func (l *Link) InsertLinks(ctx context.Context, links []*objects.Link) error {
 	return nil
 }
 
+// GetOriginal возвращает оригинальный URL по его сокращенной версии
+//
+// Параметры:
+//   - short: сокращенный URL
+//
+// Возвращает:
+//   - *objects.Link: найденная ссылка
+//   - error: ошибка при запросе
+//
+// Логирует:
+//   - Ошибки при выполнении запроса
 func (l *Link) GetOriginal(short string) (*objects.Link, error) {
 	link := &objects.Link{
 		Short: short,
@@ -118,6 +167,17 @@ func (l *Link) GetOriginal(short string) (*objects.Link, error) {
 	return link, nil
 }
 
+// GetShort возвращает сокращенный URL по оригинальному
+//
+// Параметры:
+//   - original: оригинальный URL
+//
+// Возвращает:
+//   - *objects.Link: найденная ссылка
+//   - error: ошибка при запросе
+//
+// Логирует:
+//   - Ошибки при выполнении запроса
 func (l *Link) GetShort(original string) (*objects.Link, error) {
 	link := &objects.Link{
 		Original: original,
@@ -129,6 +189,18 @@ func (l *Link) GetShort(original string) (*objects.Link, error) {
 	return link, nil
 }
 
+// GetAllByUserID возвращает все ссылки принадлежащие пользователю
+//
+// Параметры:
+//   - userID: идентификатор пользователя
+//
+// Возвращает:
+//   - []objects.Link: массив ссылок пользователя
+//   - error: ошибка при запросе
+//
+// Логирует:
+//   - Начало и завершение операции
+//   - Ошибки при выполнении запроса
 func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
 	zap.L().Info("Getting URLs for user", zap.String("userID", userID))
 	var links []objects.Link
@@ -156,6 +228,19 @@ func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
 	return links, nil
 }
 
+// MarkAsDeleted помечает ссылку как удаленную
+//
+// Параметры:
+//   - userID: идентификатор пользователя
+//   - short: сокращенный URL для удаления
+//
+// Возвращает:
+//   - error: ошибка при выполнении операции
+//
+// Особенности:
+//   - Проверяет принадлежность ссылки пользователю
+//   - Использует транзакцию
+//   - Логирует успешное выполнение
 func (l *Link) MarkAsDeleted(userID string, short string) error {
 	tx, err := l.Store.DB.Begin()
 	if err != nil {
@@ -189,6 +274,10 @@ func (l *Link) MarkAsDeleted(userID string, short string) error {
 	return nil
 }
 
+// Ping проверяет соединение с базой данных
+//
+// Возвращает:
+//   - error: ошибка если соединение недоступно
 func (l *Link) Ping() error {
 
 	return l.Store.PingDB()
