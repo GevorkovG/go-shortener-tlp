@@ -1,3 +1,5 @@
+// Пакет usertoken предоставляет функции для работы с JWT токенами пользователей.
+// Включает методы для извлечения UserID и валидации токенов.
 package usertoken
 
 import (
@@ -8,6 +10,21 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
+// GetUserID извлекает идентификатор пользователя из JWT токена.
+//
+// Параметры:
+//   - tokenString: строка с JWT токеном
+//
+// Возвращает:
+//   - string: идентификатор пользователя
+//   - error: ошибка если токен невалидный, содержит:
+//   - сообщение о неверном методе подписи
+//   - "invalid token" для невалидных токенов
+//   - ошибки парсинга токена
+//
+// Пример использования:
+//
+//	userID, err := GetUserID("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
 func GetUserID(tokenString string) (string, error) {
 	claims := &jwtstring.Claims{}
 
@@ -31,6 +48,18 @@ func GetUserID(tokenString string) (string, error) {
 	return claims.UserID, nil
 }
 
+// ValidationToken проверяет валидность JWT токена.
+//
+// Параметры:
+//   - tokenString: строка с JWT токеном для проверки
+//
+// Возвращает:
+//   - bool: true если токен валиден, false в противном случае
+//
+// Особенности:
+//   - Проверяет метод подписи (должен быть HMAC)
+//   - Проверяет срок действия токена
+//   - Логирует процесс проверки (в debug режиме)
 func ValidationToken(tokenString string) bool {
 	claims := &jwtstring.Claims{}
 
