@@ -32,8 +32,8 @@ func Test_GetOriginalURL(t *testing.T) {
 	resultURL := "https://yandex.ru"
 
 	type want struct {
-		code     int
 		location string
+		code     int
 	}
 	tests := []struct {
 		name   string
@@ -87,8 +87,8 @@ func Test_GetOriginalURL(t *testing.T) {
 
 func Test_JSONGetShortURL(t *testing.T) {
 	type want struct {
-		code        int
 		contentType string
+		code        int
 	}
 
 	tests := []struct {
@@ -148,8 +148,8 @@ func Test_JSONGetShortURL(t *testing.T) {
 
 func Test_GetShortURL(t *testing.T) {
 	type want struct {
-		code        int
 		contentType string
+		code        int
 	}
 
 	tests := []struct {
@@ -305,8 +305,8 @@ func TestAPIDeleteUserURLs(t *testing.T) {
 
 func TestAPIshortBatch(t *testing.T) {
 	type want struct {
-		code        int
 		contentType string
+		code        int
 	}
 
 	tests := []struct {
@@ -407,8 +407,8 @@ func TestAPIshortBatch(t *testing.T) {
 }
 func TestAPIGetUserURLs(t *testing.T) {
 	type want struct {
-		code        int
 		contentType string
+		code        int
 		responseLen int
 	}
 
@@ -549,8 +549,8 @@ func TestAPIGetUserURLs(t *testing.T) {
 }
 func TestAPIGetUserURLsWithFileStorage(t *testing.T) {
 	type want struct {
-		code        int
 		contentType string
+		code        int
 		responseLen int
 	}
 
