@@ -31,7 +31,7 @@ func (s *LinkStorageTestSuite) SetupSuite() {
 	zap.ReplaceGlobals(logger)
 
 	// Настройки подключения
-	dsn := os.Getenv("DATABASE_URI")
+	dsn := os.Getenv("DATABASE_DSN")
 	if dsn == "" {
 		dsn = "postgres://postgres:postgres@localhost:5432/shortener_test?sslmode=disable"
 	}
