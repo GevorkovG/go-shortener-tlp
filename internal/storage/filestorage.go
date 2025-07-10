@@ -253,13 +253,14 @@ func (fs *FileStorage) GetAllByUserID(userID string) ([]objects.Link, error) {
 
 	// Проходим по всем ссылкам в памяти и фильтруем по userID
 	for short, original := range fs.memStorage.urls {
-		// Предполагаем, что userID сохраняется при вставке
-		link := objects.Link{
-			Short:    short,
-			Original: original,
-			UserID:   userID,
+		if fs.memStorage.userIDs[short] == userID {
+			link := objects.Link{
+				Short:    short,
+				Original: original,
+				UserID:   userID,
+			}
+			userLinks = append(userLinks, link)
 		}
-		userLinks = append(userLinks, link)
 	}
 
 	zap.L().Info("User URLs retrieved from file storage", zap.String("userID", userID), zap.Any("userLinks", userLinks))
