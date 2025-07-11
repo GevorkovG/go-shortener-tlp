@@ -23,5 +23,11 @@ func main() {
 	log.InitLogger()     // Инициализация логгера
 	defer zap.L().Sync() // Очистка буферов логгера при завершении программы
 
+	zap.L().Info("Application started",
+		zap.String("version", buildVersion),
+		zap.String("build_date", buildDate),
+		zap.String("commit", buildCommit),
+	)
+
 	app.Run()
 }

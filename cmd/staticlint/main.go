@@ -146,7 +146,7 @@ import (
 	"honnef.co/go/tools/staticcheck"
 	"honnef.co/go/tools/stylecheck"
 
-	"github.com/GevorkovG/go-shortener-tlp/cmd/staticlint/myanalizer"
+	"staticlint/myanalyzer"
 )
 
 func main() {
@@ -225,7 +225,6 @@ func main() {
 	)
 
 	// Добавляем собственный анализатор
-	analyzers = append(analyzers, myanalizer.NoOsExitAnalyzer)
-
+	analyzers = append(analyzers, myanalyzer.NoOsExitAnalyzer)
 	multichecker.Main(analyzers...)
 }
