@@ -4,7 +4,9 @@
 package app
 
 import (
+	"encoding/json"
 	"log"
+	"os"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
@@ -26,6 +28,26 @@ type contextKey string
 // Token - ключ контекста для хранения и извлечения токена аутентификации.
 // Используется в middleware и обработчиках для передачи токена между слоями приложения.
 const Token contextKey = "token"
+
+func (a *AppConfig) loadConfigFromFile(file string) {
+
+	data, err := os.ReadFile(file)
+
+	if err != nil {
+
+		log.Println(err)
+
+	}
+
+	err = json.Unmarshal(data, &a)
+
+	if err != nil {
+
+		log.Println(err, "Error parsing config JSON")
+
+	}
+
+}
 
 // NewApp создает и инициализирует новый экземпляр приложения с заданной конфигурацией.
 // В зависимости от параметров конфигурации выбирается соответствующее хранилище:
