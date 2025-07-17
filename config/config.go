@@ -22,11 +22,13 @@ const (
 //   - ResultURL: базовый URL для сокращенных ссылок (env:"BASE_URL")
 //   - FilePATH: путь к файлу хранилища (env:"FILE_STORAGE_PATH")
 //   - DataBaseString: строка подключения к БД (env:"DATABASE_DSN")
+//   - EnableHTTPS:    включить HTTPS (env:"ENABLE_HTTPS")
 type AppConfig struct {
 	Host           string `env:"SERVER_ADDRESS"`
 	ResultURL      string `env:"BASE_URL"`
 	FilePATH       string `env:"FILE_STORAGE_PATH"`
 	DataBaseString string `env:"DATABASE_DSN"`
+	EnableHTTPS    string `env:"ENABLE_HTTPS"`
 }
 
 // NewCfg создает и инициализирует конфигурацию приложения, используя:
@@ -38,6 +40,7 @@ type AppConfig struct {
 //   - ResultURL (флаг -b) - базовый URL для результатов (по умолчанию "http://localhost:8080")
 //   - FilePATH (флаг -f) - путь к файлу хранилища (по умолчанию "")
 //   - DataBaseString (флаг -d) - строка подключения к БД (по умолчанию "")
+//   - EnableHTTPS (флаг -s) - включить HTTPS (по умолчанию "")
 //
 // Возвращает:
 //   - *AppConfig: указатель на инициализированную конфигурацию
@@ -61,6 +64,7 @@ func NewCfg() *AppConfig {
 	flag.StringVar(&a.ResultURL, "b", "http://localhost:8080", "It's a Result URL")
 	flag.StringVar(&a.FilePATH, "f", "", "It's a FilePATH")
 	flag.StringVar(&a.DataBaseString, "d", "", "it's conn string")
+	flag.StringVar(&a.EnableHTTPS, "s", "", "using HTTPS")
 
 	flag.Parse()
 

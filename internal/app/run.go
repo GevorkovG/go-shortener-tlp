@@ -191,7 +191,7 @@ func gzipMiddleware(h http.Handler) http.Handler {
 	})
 }
 
-// Run инициализирует и запускает HTTP-сервер сокращения URL с полной конфигурацией.
+// Run инициализирует и запускает HTTP/HTTPS сервер сокращения URL с полной конфигурацией.
 // Функция выполняет:
 //   - Загрузку конфигурации
 //   - Инициализацию логгера
@@ -265,6 +265,17 @@ func Run() {
 	}()
 
 	logg.Logger.Info("Starting main server", zap.String("address", conf.Host))
+
+	if conf.EnableHTTPS != "" {
+		if err := http.ListenAndServeTLS(conf.Host, "./certs/cert.pem", "./certs/key.pem", r); err != nil {
+			logg.Logger.Error("main server failed", zap.Error(err))
+		}
+	} else {
+		if err := http.ListenAndServe(conf.Host, r); err != nil {
+			logg.Logger.Error("main server failed", zap.Error(err))
+		}
+	}
+
 	if err := http.ListenAndServe(conf.Host, r); err != nil {
 		logg.Logger.Error("main server failed", zap.Error(err))
 	}
