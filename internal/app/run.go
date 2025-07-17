@@ -2,9 +2,14 @@ package app
 
 import (
 	"compress/gzip"
+	"context"
 	"io"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	_ "net/http/pprof"
 
@@ -233,6 +238,7 @@ func gzipMiddleware(h http.Handler) http.Handler {
 func Run() {
 	conf := config.NewCfg()
 	logg.InitLogger() // Инициализация логгера
+	defer zap.L().Sync()
 
 	// Логируем информацию о запуске сервера
 	logg.Logger.Info("Starting server",
@@ -245,9 +251,9 @@ func Run() {
 
 	r := chi.NewRouter()
 
-	r.Use(logg.LoggerMiddleware) // Используем LoggerMiddleware
-	r.Use(gzipMiddleware)
-	r.Use(cookies.Cookies)
+	r.Use(logg.LoggerMiddleware,
+		gzipMiddleware,
+		cookies.Cookies)
 
 	r.Post("/api/shorten", newApp.JSONGetShortURL)
 	r.Get("/{id}", newApp.GetOriginalURL)
@@ -257,27 +263,69 @@ func Run() {
 	r.Get("/api/user/urls", newApp.APIGetUserURLs)
 	r.Delete("/api/user/urls", newApp.APIDeleteUserURLs)
 
+	// Создание HTTP сервера с таймаутами
+	srv := &http.Server{
+		Addr:         conf.Host,
+		Handler:      r,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  30 * time.Second,
+	}
+
+	// Канал для graceful shutdown
+	shutdownChan := make(chan struct{})
+
+	// Запуск сервера в горутине
 	go func() {
-		logg.Logger.Info("Starting pprof server", zap.String("address", ":6060"))
-		if err := http.ListenAndServe(":6060", nil); err != nil {
-			logg.Logger.Error("pprof server failed", zap.Error(err))
+		zap.L().Info("Starting server",
+			zap.String("address", conf.Host),
+			zap.Bool("https", conf.EnableHTTPS),
+		)
+
+		var err error
+		if conf.EnableHTTPS {
+			err = srv.ListenAndServeTLS("./certs/cert.pem", "./certs/key.pem")
+		} else {
+			err = srv.ListenAndServe()
+		}
+
+		if err != nil && err != http.ErrServerClosed {
+			zap.L().Error("Server error", zap.Error(err))
+		}
+		close(shutdownChan)
+	}()
+
+	// Запуск pprof сервера
+	go func() {
+		pprofServer := &http.Server{
+			Addr:    ":6060",
+			Handler: nil,
+		}
+		zap.L().Info("Starting pprof server", zap.String("address", ":6060"))
+		if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			zap.L().Error("Pprof server error", zap.Error(err))
 		}
 	}()
 
-	logg.Logger.Info("Starting main server", zap.String("address", conf.Host))
+	// Канал для обработки сигналов ОС
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
-	if conf.EnableHTTPS {
-		if err := http.ListenAndServeTLS(conf.Host, "./certs/cert.pem", "./certs/key.pem", r); err != nil {
-			logg.Logger.Error("main server failed", zap.Error(err))
-		}
-	} else {
-		if err := http.ListenAndServe(conf.Host, r); err != nil {
-			logg.Logger.Error("main server failed", zap.Error(err))
-		}
+	// Ожидаем сигнал завершения или ошибку сервера
+	select {
+	case sig := <-sigChan:
+		zap.L().Info("Received signal, shutting down", zap.String("signal", sig.String()))
+	case <-shutdownChan:
 	}
 
-	if err := http.ListenAndServe(conf.Host, r); err != nil {
-		logg.Logger.Error("main server failed", zap.Error(err))
+	// Контекст с таймаутом для graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Остановка основного сервера
+	if err := srv.Shutdown(ctx); err != nil {
+		zap.L().Error("Main server shutdown error", zap.Error(err))
 	}
 
+	zap.L().Info("Server stopped gracefully")
 }
