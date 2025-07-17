@@ -266,7 +266,7 @@ func Run() {
 
 	logg.Logger.Info("Starting main server", zap.String("address", conf.Host))
 
-	if conf.EnableHTTPS != "" {
+	if conf.EnableHTTPS {
 		if err := http.ListenAndServeTLS(conf.Host, "./certs/cert.pem", "./certs/key.pem", r); err != nil {
 			logg.Logger.Error("main server failed", zap.Error(err))
 		}
