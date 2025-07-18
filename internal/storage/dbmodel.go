@@ -1,4 +1,4 @@
-// Пакет storage предоставляет реализацию хранилища для сервиса сокращения URL
+// Package storage предоставляет реализацию хранилища для сервиса сокращения URL
 // с использованием PostgreSQL в качестве бэкенда.
 package storage
 
@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
@@ -157,13 +158,30 @@ func (l *Link) InsertLinks(ctx context.Context, links []*objects.Link) error {
 // Логирует:
 //   - Ошибки при выполнении запроса
 func (l *Link) GetOriginal(short string) (*objects.Link, error) {
-	link := &objects.Link{
-		Short: short,
-	}
-	if err := l.Store.DB.QueryRow("SELECT original, is_deleted FROM links WHERE short = $1", link.Short).Scan(&link.Original, &link.DeletedFlag); err != nil {
-		zap.L().Error("Failed to get original URL", zap.String("short", short), zap.Error(err))
+	link := &objects.Link{Short: short}
+
+	var (
+		original  string
+		userID    string
+		isDeleted bool
+	)
+
+	err := l.Store.DB.QueryRow(
+		"SELECT TRIM(original), TRIM(userid), is_deleted FROM links WHERE short = $1",
+		strings.TrimSpace(short),
+	).Scan(&original, &userID, &isDeleted)
+
+	if err != nil {
+		zap.L().Error("Failed to get original URL",
+			zap.String("short", short),
+			zap.Error(err))
 		return nil, err
 	}
+
+	link.Original = original
+	link.UserID = userID
+	link.DeletedFlag = isDeleted
+
 	return link, nil
 }
 
@@ -179,13 +197,28 @@ func (l *Link) GetOriginal(short string) (*objects.Link, error) {
 // Логирует:
 //   - Ошибки при выполнении запроса
 func (l *Link) GetShort(original string) (*objects.Link, error) {
-	link := &objects.Link{
-		Original: original,
-	}
-	if err := l.Store.DB.QueryRow("SELECT short FROM links WHERE original = $1", link.Original).Scan(&link.Short); err != nil {
-		zap.L().Error("Failed to get short URL", zap.String("original", original), zap.Error(err))
+	link := &objects.Link{Original: original}
+
+	var (
+		short  string
+		userID string
+	)
+
+	err := l.Store.DB.QueryRow(
+		"SELECT TRIM(short), TRIM(userid) FROM links WHERE original = $1",
+		strings.TrimSpace(original),
+	).Scan(&short, &userID)
+
+	if err != nil {
+		zap.L().Error("Failed to get short URL",
+			zap.String("original", original),
+			zap.Error(err))
 		return nil, err
 	}
+
+	link.Short = short
+	link.UserID = userID
+
 	return link, nil
 }
 
