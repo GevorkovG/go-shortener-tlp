@@ -4,10 +4,11 @@ import (
 	"compress/gzip"
 	"context"
 	"io"
+	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -236,9 +237,24 @@ func gzipMiddleware(h http.Handler) http.Handler {
 //
 //	go tool pprof http://localhost:6060/debug/pprof/profile
 func Run() {
+
 	conf := config.NewCfg()
 	logg.InitLogger() // Инициализация логгера
-	defer zap.L().Sync()
+	defer func() {
+		// Принудительно сбрасываем буфер логов
+		if err := zap.L().Sync(); err != nil {
+			// Sync может возвращать ошибку для stderr (это нормально)
+			log.Printf("Failed to sync zap logs: %v", err)
+		}
+		log.Println("Server shutdown completed")
+	}()
+
+	newApp := NewApp(conf)
+	r := chi.NewRouter()
+	r.Use(logg.LoggerMiddleware,
+		gzipMiddleware,
+		cookies.Cookies,
+	)
 
 	// Логируем информацию о запуске сервера
 	logg.Logger.Info("Starting server",
@@ -246,14 +262,6 @@ func Run() {
 		zap.String("pprof_host", "localhost:6060"),
 		zap.String("base_url", conf.ResultURL),
 	)
-
-	newApp := NewApp(conf)
-
-	r := chi.NewRouter()
-
-	r.Use(logg.LoggerMiddleware,
-		gzipMiddleware,
-		cookies.Cookies)
 
 	r.Post("/api/shorten", newApp.JSONGetShortURL)
 	r.Get("/{id}", newApp.GetOriginalURL)
@@ -272,11 +280,21 @@ func Run() {
 		IdleTimeout:  30 * time.Second,
 	}
 
-	// Канал для graceful shutdown
-	shutdownChan := make(chan struct{})
+	pprofServer := &http.Server{Addr: ":6060"}
 
-	// Запуск сервера в горутине
+	// Создаем WaitGroup для ожидания завершения серверов
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// Создаем контекст для graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(),
+		syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
+
+	// Запуск основного сервера
 	go func() {
+		defer wg.Done()
+
 		zap.L().Info("Starting server",
 			zap.String("address", conf.Host),
 			zap.Bool("https", conf.EnableHTTPS),
@@ -291,41 +309,39 @@ func Run() {
 
 		if err != nil && err != http.ErrServerClosed {
 			zap.L().Error("Server error", zap.Error(err))
+			stop() // Инициируем shutdown при ошибке
 		}
-		close(shutdownChan)
 	}()
 
 	// Запуск pprof сервера
 	go func() {
-		pprofServer := &http.Server{
-			Addr:    ":6060",
-			Handler: nil,
-		}
+		defer wg.Done()
+
 		zap.L().Info("Starting pprof server", zap.String("address", ":6060"))
 		if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			zap.L().Error("Pprof server error", zap.Error(err))
 		}
 	}()
 
-	// Канал для обработки сигналов ОС
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
-
 	// Ожидаем сигнал завершения или ошибку сервера
-	select {
-	case sig := <-sigChan:
-		zap.L().Info("Received signal, shutting down", zap.String("signal", sig.String()))
-	case <-shutdownChan:
-	}
+	<-ctx.Done()
+	zap.L().Info("Received shutdown signal")
 
-	// Контекст с таймаутом для graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	// Graceful shutdown с таймаутом
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	// Остановка основного сервера
-	if err := srv.Shutdown(ctx); err != nil {
+	// Останавливаем основной сервер
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("Main server shutdown error", zap.Error(err))
 	}
 
+	// Останавливаем pprof сервер
+	if err := pprofServer.Shutdown(shutdownCtx); err != nil {
+		zap.L().Error("Pprof server shutdown error", zap.Error(err))
+	}
+
+	// Ждем завершения всех горутин
+	wg.Wait()
 	zap.L().Info("Server stopped gracefully")
 }
