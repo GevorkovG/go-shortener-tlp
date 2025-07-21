@@ -26,7 +26,7 @@ type LinkStorageTestSuite struct {
 }
 
 func (s *LinkStorageTestSuite) SetupSuite() {
-	// Инициализация логера
+	// Инициализация логгера
 	logger, _ := zap.NewDevelopment()
 	zap.ReplaceGlobals(logger)
 
