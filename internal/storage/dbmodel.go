@@ -253,6 +253,10 @@ func (l *Link) GetAllByUserID(userID string) ([]objects.Link, error) {
 			zap.L().Error("Failed to scan row", zap.Error(err))
 			return nil, err
 		}
+		if err := rows.Err(); err != nil {
+			zap.L().Error("Error after iterating rows", zap.String("userID", userID), zap.Error(err))
+			return nil, err
+		}
 		links = append(links, link)
 	}
 
