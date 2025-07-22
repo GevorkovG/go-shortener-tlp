@@ -1,6 +1,5 @@
 package storage
 
-/*
 import (
 	"context"
 	"database/sql"
@@ -31,10 +30,11 @@ func (s *LinkStorageTestSuite) SetupSuite() {
 	logger, _ := zap.NewDevelopment()
 	zap.ReplaceGlobals(logger)
 
-	// Настройки подключения
-	dsn := os.Getenv("DATABASE_")
+	// Настройки подключения - при отсутствии  DATABASE_DSN dbmodel пропускается
+	dsn := os.Getenv("DATABASE_DSN")
 	if dsn == "" {
-		dsn = "postgres://postgres:postgres@localhost:5432/shortener_test?sslmode=disable"
+		s.T().Skip("Skipping test suite because DATABASE_DSN is not set")
+		return
 	}
 
 	// Подключение к БД
@@ -218,4 +218,3 @@ func (s *LinkStorageTestSuite) TestPing() {
 	err := s.storage.Ping()
 	assert.NoError(s.T(), err)
 }
-*/

@@ -2,9 +2,15 @@ package app
 
 import (
 	"compress/gzip"
+	"context"
 	"io"
+	"log"
 	"net/http"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
+	"time"
 
 	_ "net/http/pprof"
 
@@ -191,7 +197,7 @@ func gzipMiddleware(h http.Handler) http.Handler {
 	})
 }
 
-// Run инициализирует и запускает HTTP-сервер сокращения URL с полной конфигурацией.
+// Run инициализирует и запускает HTTP/HTTPS сервер сокращения URL с полной конфигурацией.
 // Функция выполняет:
 //   - Загрузку конфигурации
 //   - Инициализацию логгера
@@ -231,8 +237,24 @@ func gzipMiddleware(h http.Handler) http.Handler {
 //
 //	go tool pprof http://localhost:6060/debug/pprof/profile
 func Run() {
+
 	conf := config.NewCfg()
 	logg.InitLogger() // Инициализация логгера
+	defer func() {
+		// Принудительно сбрасываем буфер логов
+		if err := zap.L().Sync(); err != nil {
+			// Sync может возвращать ошибку для stderr (это нормально)
+			log.Printf("Failed to sync zap logs: %v", err)
+		}
+		log.Println("Server shutdown completed")
+	}()
+
+	newApp := NewApp(conf)
+	r := chi.NewRouter()
+	r.Use(logg.LoggerMiddleware,
+		gzipMiddleware,
+		cookies.Cookies,
+	)
 
 	// Логируем информацию о запуске сервера
 	logg.Logger.Info("Starting server",
@@ -240,14 +262,6 @@ func Run() {
 		zap.String("pprof_host", "localhost:6060"),
 		zap.String("base_url", conf.ResultURL),
 	)
-
-	newApp := NewApp(conf)
-
-	r := chi.NewRouter()
-
-	r.Use(logg.LoggerMiddleware) // Используем LoggerMiddleware
-	r.Use(gzipMiddleware)
-	r.Use(cookies.Cookies)
 
 	r.Post("/api/shorten", newApp.JSONGetShortURL)
 	r.Get("/{id}", newApp.GetOriginalURL)
@@ -257,16 +271,77 @@ func Run() {
 	r.Get("/api/user/urls", newApp.APIGetUserURLs)
 	r.Delete("/api/user/urls", newApp.APIDeleteUserURLs)
 
+	// Создание HTTP сервера с таймаутами
+	srv := &http.Server{
+		Addr:         conf.Host,
+		Handler:      r,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  30 * time.Second,
+	}
+
+	pprofServer := &http.Server{Addr: ":6060"}
+
+	// Создаем WaitGroup для ожидания завершения серверов
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// Создаем контекст для graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(),
+		syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
+
+	// Запуск основного сервера
 	go func() {
-		logg.Logger.Info("Starting pprof server", zap.String("address", ":6060"))
-		if err := http.ListenAndServe(":6060", nil); err != nil {
-			logg.Logger.Error("pprof server failed", zap.Error(err))
+		defer wg.Done()
+
+		zap.L().Info("Starting server",
+			zap.String("address", conf.Host),
+			zap.Bool("https", conf.EnableHTTPS),
+		)
+
+		var err error
+		if conf.EnableHTTPS {
+			err = srv.ListenAndServeTLS("./certs/cert.pem", "./certs/key.pem")
+		} else {
+			err = srv.ListenAndServe()
+		}
+
+		if err != nil && err != http.ErrServerClosed {
+			zap.L().Error("Server error", zap.Error(err))
+			stop() // Инициируем shutdown при ошибке
 		}
 	}()
 
-	logg.Logger.Info("Starting main server", zap.String("address", conf.Host))
-	if err := http.ListenAndServe(conf.Host, r); err != nil {
-		logg.Logger.Error("main server failed", zap.Error(err))
+	// Запуск pprof сервера
+	go func() {
+		defer wg.Done()
+
+		zap.L().Info("Starting pprof server", zap.String("address", ":6060"))
+		if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			zap.L().Error("Pprof server error", zap.Error(err))
+		}
+	}()
+
+	// Ожидаем сигнал завершения или ошибку сервера
+	<-ctx.Done()
+	zap.L().Info("Received shutdown signal")
+
+	// Graceful shutdown с таймаутом
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Останавливаем основной сервер
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		zap.L().Error("Main server shutdown error", zap.Error(err))
 	}
 
+	// Останавливаем pprof сервер
+	if err := pprofServer.Shutdown(shutdownCtx); err != nil {
+		zap.L().Error("Pprof server shutdown error", zap.Error(err))
+	}
+
+	// Ждем завершения всех горутин
+	wg.Wait()
+	zap.L().Info("Server stopped gracefully")
 }
