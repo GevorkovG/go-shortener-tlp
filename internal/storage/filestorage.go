@@ -293,3 +293,48 @@ func (fs *FileStorage) MarkAsDeleted(userID string, short string) error {
 func (fs *FileStorage) Ping() error {
 	return nil
 }
+
+// GetStats возвращает статистику сервиса:
+//   - количество уникальных сокращённых URL
+//   - количество уникальных пользователей
+//
+// Возвращает:
+//   - urls: количество URL
+//   - users: количество пользователей
+//   - error: ошибка при чтении файла
+func (fs *FileStorage) GetStats(ctx context.Context) (urls int, users int, err error) {
+	// Сначала получаем данные из in-memory хранилища
+	urls = len(fs.memStorage.urls)
+
+	// Собираем уникальных пользователей из памяти
+	uniqueUsers := make(map[string]struct{})
+	for _, userID := range fs.memStorage.userIDs {
+		if userID != "" {
+			uniqueUsers[userID] = struct{}{}
+		}
+	}
+	users = len(uniqueUsers)
+
+	// Дополнительная проверка: если файл существует, но в памяти нет данных
+	if urls == 0 {
+		// Попробуем загрузить данные из файла
+		data, err := LoadFromFile(fs.filePATH)
+		if err != nil {
+			return 0, 0, err
+		}
+		urls = len(data)
+		// Для пользователей потребуется полная загрузка
+		if urls > 0 {
+			fs.ConfigureFileStorage() // Перезагружаем данные
+			return fs.GetStats(ctx)   // Рекурсивный вызов с обновленными данными
+		}
+	}
+
+	zap.L().Debug("File storage stats",
+		zap.Int("urls", urls),
+		zap.Int("users", users),
+		zap.String("file", fs.filePATH),
+	)
+
+	return urls, users, nil
+}

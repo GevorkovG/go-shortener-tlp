@@ -33,6 +33,7 @@ type AppConfig struct {
 	DataBaseString string `env:"DATABASE_DSN" json:"database_dsn"`
 	EnableHTTPS    bool   `env:"ENABLE_HTTPS" json:"enable_https"`
 	ConfigJSON     string `env:"CONFIG" json:"-"`
+	TrustedSubnet  string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 }
 
 // loadConfigFromFile загружает конфигурацию приложения из файла.
@@ -65,6 +66,10 @@ func (a *AppConfig) loadConfigFromFile() error {
 	}
 	if !a.EnableHTTPS && fileConfig.EnableHTTPS {
 		a.EnableHTTPS = fileConfig.EnableHTTPS
+	}
+
+	if a.TrustedSubnet == "" && fileConfig.TrustedSubnet != "" {
+		a.TrustedSubnet = fileConfig.TrustedSubnet
 	}
 
 	return nil
@@ -102,6 +107,7 @@ func NewCfg() *AppConfig {
 	flag.StringVar(&a.DataBaseString, "d", "", "it's conn string")
 	flag.BoolVar(&a.EnableHTTPS, "s", false, "using HTTPS")
 	flag.StringVar(&a.ConfigJSON, "c", "", "It's a ConfigJSON file")
+	flag.StringVar(&a.TrustedSubnet, "t", "", "Trusted subnet (CIDR notation)")
 
 	flag.Parse()
 
