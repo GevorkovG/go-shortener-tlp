@@ -49,3 +49,13 @@ curl -v -b cookies.txt http://localhost:8080/api/user/urls
 curl -v -b cookies.txt -X DELETE -H "Content-Type: application/json" -d '["HHSYDQr6Rxl", "MIwqRu4sGnu"]' http://localhost:8080/api/user/urls
 
 
+
+curl -H "X-Real-IP: 192.168.1.100" http://localhost:8080/api/internal/stats
+
+curl -H "X-Real-IP: 10.0.0.1" http://localhost:8080/api/internal/stats
+
+
+go test -v -coverpkg=./... -coverprofile=coverage.out -covermode=count ./...
+
+go tool cover -func coverage.out
+
