@@ -319,3 +319,42 @@ func (l *Link) Ping() error {
 
 	return l.Store.PingDB()
 }
+
+// GetStats возвращает статистику сервиса:
+//   - количество уникальных сокращённых URL
+//   - количество уникальных пользователей
+//
+// Параметры:
+//   - ctx: контекст выполнения
+//
+// Возвращает:
+//   - urls: количество URL
+//   - users: количество пользователей
+//   - error: ошибка при выполнении запроса
+//
+// Логирует:
+//   - Статистику на уровне Debug
+//   - Ошибки выполнения запроса
+func (l *Link) GetStats(ctx context.Context) (urls int, users int, err error) {
+	// Запрос количества уникальных URL (исключая удаленные)
+	err = l.Store.DB.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM links WHERE is_deleted = FALSE").Scan(&urls)
+	if err != nil {
+		zap.L().Error("Failed to get URLs count", zap.Error(err))
+		return 0, 0, err
+	}
+
+	// Запрос количества уникальных пользователей
+	err = l.Store.DB.QueryRowContext(ctx,
+		"SELECT COUNT(DISTINCT userid) FROM links WHERE userid IS NOT NULL").Scan(&users)
+	if err != nil {
+		zap.L().Error("Failed to get users count", zap.Error(err))
+		return 0, 0, err
+	}
+
+	zap.L().Debug("Database stats",
+		zap.Int("urls", urls),
+		zap.Int("users", users))
+
+	return urls, users, nil
+}

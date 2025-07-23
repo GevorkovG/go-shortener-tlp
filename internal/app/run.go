@@ -270,6 +270,7 @@ func Run() {
 	r.Post("/api/shorten/batch", newApp.APIshortBatch)
 	r.Get("/api/user/urls", newApp.APIGetUserURLs)
 	r.Delete("/api/user/urls", newApp.APIDeleteUserURLs)
+	r.Get("/api/internal/stats", newApp.GetStats)
 
 	// Создание HTTP сервера с таймаутами
 	srv := &http.Server{
@@ -284,7 +285,6 @@ func Run() {
 
 	// Создаем WaitGroup для ожидания завершения серверов
 	var wg sync.WaitGroup
-	wg.Add(2)
 
 	// Создаем контекст для graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(),
@@ -292,6 +292,7 @@ func Run() {
 	defer stop()
 
 	// Запуск основного сервера
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
 
