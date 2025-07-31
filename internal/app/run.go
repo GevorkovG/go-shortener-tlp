@@ -3,8 +3,8 @@ package app
 import (
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os/signal"
 	"strings"
@@ -16,7 +16,7 @@ import (
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
-	logg "github.com/GevorkovG/go-shortener-tlp/internal/log"
+	"github.com/GevorkovG/go-shortener-tlp/internal/logger"
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
 )
@@ -236,28 +236,25 @@ func gzipMiddleware(h http.Handler) http.Handler {
 // Для профилирования:
 //
 //	go tool pprof http://localhost:6060/debug/pprof/profile
-func Run() {
+func Run() error {
 
 	conf := config.NewCfg()
-	logg.InitLogger() // Инициализация логгера
-	defer func() {
-		// Принудительно сбрасываем буфер логов
-		if err := zap.L().Sync(); err != nil {
-			// Sync может возвращать ошибку для stderr (это нормально)
-			log.Printf("Failed to sync zap logs: %v", err)
-		}
-		log.Println("Server shutdown completed")
-	}()
+	logger.InitLogger()
+	if err != nil {
+		return fmt.Errorf("failed to initialize logger: %w", err)
+	}
+	defer logger.Sync()
 
-	newApp := NewApp(conf)
+	newApp := NewApp(conf, logger)
+
 	r := chi.NewRouter()
-	r.Use(logg.LoggerMiddleware,
+	r.Use(logger.Logger,
 		gzipMiddleware,
 		cookies.Cookies,
 	)
 
 	// Логируем информацию о запуске сервера
-	logg.Logger.Info("Starting server",
+	zap.L().Info("Starting server",
 		zap.String("host", conf.Host),
 		zap.String("pprof_host", "localhost:6060"),
 		zap.String("base_url", conf.ResultURL),
@@ -292,11 +289,11 @@ func Run() {
 	defer stop()
 
 	// Запуск основного сервера
-	wg.Add(2)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		zap.L().Info("Starting server",
+		zap.L().Info("Starting main server",
 			zap.String("address", conf.Host),
 			zap.Bool("https", conf.EnableHTTPS),
 		)
@@ -309,40 +306,40 @@ func Run() {
 		}
 
 		if err != nil && err != http.ErrServerClosed {
-			zap.L().Error("Server error", zap.Error(err))
-			stop() // Инициируем shutdown при ошибке
+			zap.L().Error("Main server error", zap.Error(err))
+			stop()
 		}
 	}()
 
 	// Запуск pprof сервера
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
 		zap.L().Info("Starting pprof server", zap.String("address", ":6060"))
 		if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			zap.L().Error("Pprof server error", zap.Error(err))
+			stop()
 		}
 	}()
 
-	// Ожидаем сигнал завершения или ошибку сервера
+	// Ожидаем сигнал завершения
 	<-ctx.Done()
 	zap.L().Info("Received shutdown signal")
 
-	// Graceful shutdown с таймаутом
+	// Graceful shutdown
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	// Останавливаем основной сервер
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("Main server shutdown error", zap.Error(err))
 	}
 
-	// Останавливаем pprof сервер
 	if err := pprofServer.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("Pprof server shutdown error", zap.Error(err))
 	}
 
-	// Ждем завершения всех горутин
 	wg.Wait()
 	zap.L().Info("Server stopped gracefully")
+	return nil
 }

@@ -35,16 +35,12 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode
 }
 
-// Logger — глобальная переменная для логгера
-var Logger *zap.Logger
+// ZapLogger *zap.Logger
+var ZapLogger *zap.Logger
 
 // InitLogger инициализирует логгер
 func InitLogger() {
-	var err error
-	Logger, err = zap.NewDevelopment() // Логгер для разработки (вывод в консоль)
-	if err != nil {
-		panic(err) // В случае ошибки завершаем программу
-	}
+	ZapLogger, _ = zap.NewDevelopment()
 }
 
 // LoggerMiddleware — middleware для логирования HTTP-запросов
@@ -63,13 +59,13 @@ func LoggerMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(&lw, r)
 
 		// Логируем информацию о запросе
-		Logger.Info("HTTP request",
-			zap.String("uri", r.RequestURI),
-			zap.String("method", r.Method),
-			zap.Int("status", responseData.status),
-			zap.Duration("duration", time.Since(start)),
-			zap.Int("size", responseData.size),
-			zap.String("location", w.Header().Get("Location")),
+		ZapLogger.Sugar().Infoln(
+			"uri", r.RequestURI,
+			"method", r.Method,
+			"status", responseData.status, // получаем перехваченный код статуса ответа
+			"duration", time.Since(start),
+			"size", responseData.size, // получаем перехваченный размер ответа
+			"loc", w.Header().Get("Location"),
 		)
 	})
 }
