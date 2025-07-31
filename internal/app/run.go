@@ -3,7 +3,6 @@ package app
 import (
 	"compress/gzip"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"os/signal"
@@ -240,15 +239,11 @@ func Run() error {
 
 	conf := config.NewCfg()
 	logger.InitLogger()
-	if err != nil {
-		return fmt.Errorf("failed to initialize logger: %w", err)
-	}
-	defer logger.Sync()
 
-	newApp := NewApp(conf, logger)
+	newApp := NewApp(conf)
 
 	r := chi.NewRouter()
-	r.Use(logger.Logger,
+	r.Use(logger.LoggerMiddleware,
 		gzipMiddleware,
 		cookies.Cookies,
 	)
