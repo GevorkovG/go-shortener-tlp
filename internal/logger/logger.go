@@ -4,6 +4,7 @@
 package logger
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -40,7 +41,12 @@ var ZapLogger *zap.Logger
 
 // InitLogger инициализирует логгер
 func InitLogger() {
-	ZapLogger, _ = zap.NewDevelopment()
+	var err error
+	ZapLogger, err = zap.NewDevelopment()
+	if err != nil {
+		panic(fmt.Sprintf("failed to initialize logger: %v", err))
+	}
+	zap.ReplaceGlobals(ZapLogger)
 }
 
 // LoggerMiddleware — middleware для логирования HTTP-запросов
