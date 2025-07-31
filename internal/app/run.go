@@ -15,6 +15,8 @@ import (
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	"github.com/GevorkovG/go-shortener-tlp/internal/cookies"
+
+	gr "github.com/GevorkovG/go-shortener-tlp/internal/grpc"
 	"github.com/GevorkovG/go-shortener-tlp/internal/logger"
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
@@ -241,6 +243,8 @@ func Run() error {
 	logger.InitLogger()
 
 	newApp := NewApp(conf)
+
+	GRPCServer := gr.NewServer(newApp.Storage, newApp)
 
 	r := chi.NewRouter()
 	r.Use(logger.LoggerMiddleware,

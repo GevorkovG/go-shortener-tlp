@@ -59,3 +59,7 @@ go test -v -coverpkg=./... -coverprofile=coverage.out -covermode=count ./...
 
 go tool cover -func coverage.out
 
+
+export PATH="$PATH:$(go env GOPATH)/bin"
+
+protoc --go_out=. --go_opt=paths=import        --go-grpc_out=. --go-grpc_opt=paths=import        proto/grpc.proto
