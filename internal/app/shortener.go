@@ -19,7 +19,7 @@ import (
 	"github.com/go-chi/chi"
 )
 
-func generateID() string {
+func GenerateID() string {
 	alphabet := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	number := rand.Uint64()
 	length := len(alphabet)
@@ -136,7 +136,7 @@ func (a *App) JSONGetShortURL(w http.ResponseWriter, r *http.Request) {
 
 	// Создаем объект Link
 	link := &objects.Link{
-		Short:    generateID(),
+		Short:    GenerateID(),
 		Original: req.URL,
 		UserID:   UserID, // Устанавливаем UserID
 	}
@@ -225,7 +225,7 @@ func (a *App) GetShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	link := &objects.Link{
-		Short:    generateID(),
+		Short:    GenerateID(),
 		Original: string(responseData),
 		UserID:   userID, // Устанавливаем UserID
 	}

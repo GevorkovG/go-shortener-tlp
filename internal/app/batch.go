@@ -119,7 +119,7 @@ func (a *App) APIshortBatch(w http.ResponseWriter, r *http.Request) {
 
 	for _, val := range originals {
 
-		key := generateID()
+		key := GenerateID()
 		resp := Resp{
 			ID:    val.ID,
 			Short: fmt.Sprintf(a.cfg.ResultURL+"/%s", key),
