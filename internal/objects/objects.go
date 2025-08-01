@@ -23,4 +23,5 @@ type Storage interface {
 	GetAllByUserID(userID string) ([]Link, error)
 	MarkAsDeleted(userID string, short string) error
 	Ping() error
+	GetStats(ctx context.Context) (urls int, users int, err error)
 }

@@ -203,3 +203,32 @@ func (s *InMemoryStorage) MarkAsDeleted(userID string, short string) error {
 func (s *InMemoryStorage) Ping() error {
 	return nil
 }
+
+// GetStats возвращает статистику сервиса:
+//   - количество уникальных сокращённых URL
+//   - количество уникальных пользователей
+//
+// Возвращает:
+//   - urls: количество URL
+//   - users: количество пользователей
+//   - error: всегда nil (ошибки невозможны в текущей реализации)
+func (s *InMemoryStorage) GetStats(ctx context.Context) (urls int, users int, err error) {
+	// Считаем уникальные URL
+	urls = len(s.urls)
+
+	// Собираем уникальных пользователей
+	uniqueUsers := make(map[string]struct{})
+	for _, userID := range s.userIDs {
+		if userID != "" { // Игнорируем пустые userID (если такие есть)
+			uniqueUsers[userID] = struct{}{}
+		}
+	}
+	users = len(uniqueUsers)
+
+	zap.L().Debug("Storage stats",
+		zap.Int("urls", urls),
+		zap.Int("users", users),
+	)
+
+	return urls, users, nil
+}
