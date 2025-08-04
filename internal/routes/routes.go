@@ -26,7 +26,8 @@ func Router(app *app.App) http.Handler {
 	r.Post("/api/shorten/batch", app.APIshortBatch)
 	r.Get("/api/user/urls", app.APIGetUserURLs)
 	r.Delete("/api/user/urls", app.APIDeleteUserURLs)
-	r.Get("/api/internal/stats", app.GetStats)
+	r.With(middleware.TrustedSubnet(app.GetConfig().TrustedSubnet)).
+		Get("/api/internal/stats", app.GetStats)
 
 	return r
 }

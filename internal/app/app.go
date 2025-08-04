@@ -6,7 +6,6 @@ package app
 import (
 	"encoding/json"
 	"log"
-	"net"
 	"net/http"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
@@ -87,39 +86,6 @@ func (a *App) GetConfig() *config.AppConfig {
 
 // GetStats возвращает статистику сервиса
 func (a *App) GetStats(w http.ResponseWriter, r *http.Request) {
-	// Проверяем доверенную подсеть
-	if a.cfg.TrustedSubnet == "" {
-		http.Error(w, "Access forbidden", http.StatusForbidden)
-		return
-	}
-
-	// Получаем IP из заголовка X-Real-IP
-	ipStr := r.Header.Get("X-Real-IP")
-	if ipStr == "" {
-		http.Error(w, "X-Real-IP header required", http.StatusForbidden)
-		return
-	}
-
-	// Парсим IP
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		http.Error(w, "Invalid IP address", http.StatusForbidden)
-		return
-	}
-
-	// Парсим доверенную подсеть
-	_, subnet, err := net.ParseCIDR(a.cfg.TrustedSubnet)
-	if err != nil {
-		http.Error(w, "Invalid trusted subnet configuration", http.StatusInternalServerError)
-		return
-	}
-
-	// Проверяем принадлежность IP к подсети
-	if !subnet.Contains(ip) {
-		http.Error(w, "Access forbidden", http.StatusForbidden)
-		return
-	}
-
 	// Получаем статистику из хранилища
 	urls, users, err := a.Storage.GetStats(r.Context())
 	if err != nil {
