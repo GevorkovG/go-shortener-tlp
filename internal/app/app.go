@@ -4,7 +4,9 @@
 package app
 
 import (
+	"encoding/json"
 	"log"
+	"net/http"
 
 	"github.com/GevorkovG/go-shortener-tlp/config"
 	"github.com/GevorkovG/go-shortener-tlp/internal/database"
@@ -80,4 +82,28 @@ func NewApp(cfg *config.AppConfig) *App {
 // GetConfig возвращает текущую конфигурацию приложения.
 func (a *App) GetConfig() *config.AppConfig {
 	return a.cfg
+}
+
+// GetStats возвращает статистику сервиса
+func (a *App) GetStats(w http.ResponseWriter, r *http.Request) {
+	// Получаем статистику из хранилища
+	urls, users, err := a.Storage.GetStats(r.Context())
+	if err != nil {
+		http.Error(w, "Failed to get stats", http.StatusInternalServerError)
+		return
+	}
+
+	// Формируем ответ
+	stats := struct {
+		URLs  int `json:"urls"`
+		Users int `json:"users"`
+	}{
+		URLs:  urls,
+		Users: users,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
