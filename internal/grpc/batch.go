@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -12,23 +11,20 @@ import (
 	"github.com/GevorkovG/go-shortener-tlp/internal/objects"
 )
 
-// ShortURLBatch -
-func (s *Server) ShortURLBatch(_, req *ShortURLBatchRequest) (*ShortURLBatchResponse, error) {
+// ShortURLBatch обрабатывает пакетный запрос на сокращение URL
+func (s *Server) ShortURLBatch(ctx context.Context, req *ShortURLBatchRequest) (*ShortURLBatchResponse, error) {
+
+	if ctx.Err() != nil {
+		return nil, status.Error(codes.Canceled, "request ShortURLBatch canceled")
+	}
 
 	var (
 		response []*BatchResponse
 		links    []*objects.Link
-		userID   string
+		userID   string = req.UserId
 	)
 
-	userID = req.UserId
-
-	if userID == "" {
-		userID = uuid.New().String()
-	}
-
 	for _, url := range req.GetUrls() {
-
 		key := app.GenerateID()
 		resp := &BatchResponse{
 			CorrelationId: url.CorrelationId,
@@ -42,11 +38,10 @@ func (s *Server) ShortURLBatch(_, req *ShortURLBatchRequest) (*ShortURLBatchResp
 
 		response = append(response, resp)
 		links = append(links, link)
-
 	}
 
-	if err := s.Storage.InsertLinks(context.Background(), links); err != nil {
-		return nil, status.Error(codes.InvalidArgument, `Don't insert URLs`)
+	if err := s.Storage.InsertLinks(ctx, links); err != nil {
+		return nil, status.Error(codes.Internal, "failed to insert URLs")
 	}
 
 	return &ShortURLBatchResponse{
